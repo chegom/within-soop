@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { DeskCharacter, type CharacterTone } from "./components/DeskCharacter";
+import {
+  FOREST_SPECIES,
+  ForestCharacter,
+  isForestSpecies,
+  pickRandomForestSpecies,
+  speciesLabel,
+  type ForestSpecies,
+} from "./components/ForestCharacter";
 import "./App.css";
 
 type AiSessionSnapshot = {
@@ -16,8 +23,7 @@ type RoomMate = {
   status: string;
   tool: string;
   minutes: number;
-  tone: CharacterTone;
-  variant: number;
+  species: ForestSpecies;
 };
 
 type ViewMode = "full" | "compact";
@@ -40,8 +46,7 @@ const previewRoomMates: RoomMate[] = [
     status: "커피 마시는 중",
     tool: "Claude",
     minutes: 23,
-    tone: "peach",
-    variant: 1,
+    species: "rabbit",
   },
   {
     id: "devcat",
@@ -50,8 +55,7 @@ const previewRoomMates: RoomMate[] = [
     status: "AI 작업 중",
     tool: "Codex",
     minutes: 72,
-    tone: "mint",
-    variant: 2,
+    species: "fox",
   },
   {
     id: "june",
@@ -60,8 +64,7 @@ const previewRoomMates: RoomMate[] = [
     status: "책 보는 중",
     tool: "Codex",
     minutes: 8,
-    tone: "lemon",
-    variant: 3,
+    species: "bird",
   },
   {
     id: "bori",
@@ -70,8 +73,7 @@ const previewRoomMates: RoomMate[] = [
     status: "쉬는 중",
     tool: "Claude",
     minutes: 124,
-    tone: "lilac",
-    variant: 0,
+    species: "bear",
   },
   {
     id: "mina",
@@ -80,8 +82,7 @@ const previewRoomMates: RoomMate[] = [
     status: "산책 중",
     tool: "Claude",
     minutes: 35,
-    tone: "sky",
-    variant: 2,
+    species: "squirrel",
   },
   {
     id: "noah",
@@ -90,8 +91,7 @@ const previewRoomMates: RoomMate[] = [
     status: "AI 작업 중",
     tool: "Codex",
     minutes: 17,
-    tone: "rose",
-    variant: 1,
+    species: "mole",
   },
 ];
 
@@ -190,6 +190,27 @@ function App() {
   const [draftIntro, setDraftIntro] = useState(intro);
   const [isEditingIntro, setIsEditingIntro] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [mySpecies, setMySpecies] = useState<ForestSpecies>(() => {
+    const saved = localStorage.getItem("gyeot:species");
+    return isForestSpecies(saved) ? saved : pickRandomForestSpecies();
+  });
+  const [hasPinnedSpecies, setHasPinnedSpecies] = useState(
+    () => isForestSpecies(localStorage.getItem("gyeot:species")),
+  );
+
+  const chooseSpecies = (next: ForestSpecies | null) => {
+    if (next === null) {
+      localStorage.removeItem("gyeot:species");
+      setHasPinnedSpecies(false);
+      setMySpecies(pickRandomForestSpecies());
+      setNotice("실행할 때마다 랜덤 동물로 나와요");
+      return;
+    }
+    localStorage.setItem("gyeot:species", next);
+    setHasPinnedSpecies(true);
+    setMySpecies(next);
+    setNotice(`이제 ${speciesLabel[next]}(으)로 나와요`);
+  };
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -383,7 +404,7 @@ function App() {
               }}
               aria-label="이모티콘 메뉴 열기"
             >
-              <DeskCharacter tone="lilac" variant={0} active={session.active} emote={emote} />
+              <ForestCharacter species={mySpecies} active={session.active} emote={emote} />
             </button>
             <button
               type="button"
@@ -407,11 +428,7 @@ function App() {
               <span className="compact-desk-line" />
               {previewRoomMates.slice(0, 6).map((mate) => (
                 <div className="compact-peer" key={mate.id}>
-                  <DeskCharacter
-                    tone={mate.tone}
-                    variant={mate.variant}
-                    active
-                  />
+                  <ForestCharacter species={mate.species} active />
                   <div className="compact-peer-hover-card">
                     <strong>{mate.name}</strong>
                     <span>{mate.status}</span>
@@ -564,9 +581,8 @@ function App() {
                         onClick={() => setIsEditingIntro(true)}
                         aria-label="내 소개 수정"
                       >
-                        <DeskCharacter
-                          tone="lilac"
-                          variant={0}
+                        <ForestCharacter
+                          species={mySpecies}
                           active={session.active}
                           emote={emote}
                         />
@@ -588,7 +604,7 @@ function App() {
                       title={mate.intro}
                       onClick={() => setNotice(`${mate.name} · “${mate.intro}”`)}
                     >
-                      <DeskCharacter tone={mate.tone} variant={mate.variant} active />
+                      <ForestCharacter species={mate.species} active />
                       <strong>{mate.name}</strong>
                       <span className="seat-detail">
                         {mate.status} · {formatDuration(mate.minutes * 60)}
@@ -641,6 +657,32 @@ function App() {
             <span className="eyebrow">내 자리</span>
             <h2 id="intro-dialog-title">짧게 나를 소개해요</h2>
             <p>함께 있는 사람에게 이 한 줄만 보여요.</p>
+            <div className="species-picker" role="radiogroup" aria-label="내 동물 고르기">
+              {FOREST_SPECIES.map((item) => (
+                <button
+                  type="button"
+                  key={item}
+                  role="radio"
+                  aria-checked={hasPinnedSpecies && mySpecies === item}
+                  className={`species-option ${hasPinnedSpecies && mySpecies === item ? "is-selected" : ""}`}
+                  onClick={() => chooseSpecies(item)}
+                  title={speciesLabel[item]}
+                >
+                  <ForestCharacter species={item} active />
+                  <span>{speciesLabel[item]}</span>
+                </button>
+              ))}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!hasPinnedSpecies}
+                className={`species-option ${!hasPinnedSpecies ? "is-selected" : ""}`}
+                onClick={() => chooseSpecies(null)}
+              >
+                <span className="species-random">🎲</span>
+                <span>랜덤</span>
+              </button>
+            </div>
             <input
               value={draftIntro}
               onChange={(event) => setDraftIntro(event.target.value.slice(0, 28))}
