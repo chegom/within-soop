@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="room" x1="110" y1="80" x2="850" y2="930" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFF"/>
+      <stop offset="1" stop-color="#DCE5FF"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="34" stdDeviation="30" flood-color="#34364F" flood-opacity=".22"/>
+    </filter>
+  </defs>
+  <rect x="48" y="48" width="928" height="928" rx="244" fill="url(#room)"/>
+  <path d="M215 214h594c70 0 127 57 127 127v342c0 70-57 127-127 127H490L318 918l33-108H215c-70 0-127-57-127-127V341c0-70 57-127 127-127Z" fill="#35384F" filter="url(#shadow)"/>
+  <circle cx="368" cy="455" r="112" fill="#F1A184"/>
+  <circle cx="657" cy="455" r="112" fill="#91CFB3"/>
+  <circle cx="329" cy="451" r="13" fill="#35384F"/>
+  <circle cx="407" cy="451" r="13" fill="#35384F"/>
+  <circle cx="618" cy="451" r="13" fill="#35384F"/>
+  <circle cx="696" cy="451" r="13" fill="#35384F"/>
+  <path d="M346 494c14 12 31 12 45 0M635 494c14 12 31 12 45 0" fill="none" stroke="#35384F" stroke-width="12" stroke-linecap="round"/>
+  <path d="M219 630h586" fill="none" stroke="#A490C2" stroke-width="42" stroke-linecap="round"/>
+  <path d="M279 646v89M745 646v89" stroke="#8A76A7" stroke-width="24" stroke-linecap="round"/>
+  <path d="m795 315 16 52 51 16-51 16-16 52-16-52-51-16 51-16 16-52Z" fill="#F4C765"/>
+</svg>
