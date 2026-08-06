@@ -141,6 +141,7 @@ export function ForestCharacter({
   active = true,
   emote,
 }: ForestCharacterProps) {
+  const render = speciesArt[species] ?? speciesArt.bear;
   return (
     <div
       className={`desk-character forest-character species-${species} ${
@@ -150,7 +151,7 @@ export function ForestCharacter({
       {emote && <span className="character-emote">{emote}</span>}
       <svg viewBox="0 0 120 100" aria-hidden="true">
         <ellipse cx="60" cy="91" rx="38" ry="6" fill="#3A3428" opacity="0.12" />
-        {speciesArt[species]()}
+        {render()}
       </svg>
     </div>
   );
