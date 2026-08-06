@@ -1,19 +1,19 @@
 :root {
   font-family: "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
-  color: #35384f;
-  background: #e9eeff;
+  color: #3a4031;
+  background: #f3ecd2;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --room-blue: #e9eeff;
-  --paper: #fbfcff;
-  --ink: #35384f;
-  --muted: #777b92;
-  --line: #d6dcf0;
-  --lilac: #747bd8;
-  --mint: #79bfa2;
-  --coral: #ef8d76;
-  --desk: #9984b4;
+  --room-blue: #f3ecd2; /* 햇살 크림 (이름 유지, 값만 숲으로) */
+  --paper: #fdfaf0;
+  --ink: #3a4031;
+  --muted: #7d8168;
+  --line: #e2dcc0;
+  --lilac: #5e9c5b; /* 주 액센트 = 잎 초록 */
+  --mint: #6fae62;
+  --coral: #f0a848; /* 따뜻한 앰버 */
+  --desk: #8a6242; /* 나무 그루터기 */
 }
 
 * {
@@ -45,16 +45,17 @@ button {
 
 button:focus-visible,
 input:focus-visible {
-  outline: 3px solid rgba(116, 123, 216, 0.32);
+  outline: 3px solid rgba(94, 156, 91, 0.4);
   outline-offset: 3px;
 }
 
 .app-shell {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 11% 15%, rgba(255, 255, 255, 0.8), transparent 28%),
-    radial-gradient(circle at 88% 92%, rgba(171, 201, 229, 0.42), transparent 30%),
-    var(--room-blue);
+    radial-gradient(circle at 18% 8%, rgba(255, 236, 170, 0.75), transparent 30%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 120' preserveAspectRatio='none'%3E%3Cpath d='M0 120V70C20 55 32 38 48 38S72 60 92 58 122 30 142 32s28 24 48 24 30-28 50-28 26 22 46 22 32-24 46-22 36 20 44 26 20 10 24 10v58Z' fill='%23a8d98a' opacity='0.55'/%3E%3C/svg%3E") bottom / 100% 46% no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0 100V55c24-8 34-30 54-30s26 22 46 22 28-30 48-30 30 26 50 26 24-20 44-20 30 24 50 24 32-18 48-14 40 14 60 22v45Z' fill='%235e9c5b' opacity='0.5'/%3E%3C/svg%3E") bottom / 100% 32% no-repeat,
+    linear-gradient(180deg, #fdf6dc 0%, #f3ecd2 46%, #e5dfbe 72%, #d9c9a4 100%);
   position: relative;
   overflow: hidden;
 }
@@ -64,8 +65,8 @@ input:focus-visible {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: 0.32;
-  background-image: radial-gradient(rgba(72, 77, 112, 0.15) 0.55px, transparent 0.55px);
+  opacity: 0.3;
+  background-image: radial-gradient(rgba(94, 110, 70, 0.16) 0.55px, transparent 0.55px);
   background-size: 9px 9px;
 }
 
@@ -728,14 +729,14 @@ html[data-view-mode="compact"] #root {
   gap: 2px;
   color: var(--ink);
   background:
-    radial-gradient(circle at 4% 0%, rgba(255, 255, 255, 0.96), transparent 37%),
-    radial-gradient(circle at 100% 100%, rgba(174, 196, 229, 0.42), transparent 42%),
-    var(--room-blue);
-  border: 1px solid rgba(83, 89, 133, 0.16);
+    radial-gradient(circle at 8% 0%, rgba(255, 244, 200, 0.95), transparent 40%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 60' preserveAspectRatio='none'%3E%3Cpath d='M0 60V38c18-6 26-20 40-20s20 14 34 14 22-18 36-18 22 14 36 14 20-12 34-12 24 14 38 16 42 4 82 2v26Z' fill='%23a8d98a' opacity='0.45'/%3E%3C/svg%3E") bottom / 100% 55% no-repeat,
+    linear-gradient(180deg, #fdf6dc, #f0e8c8);
+  border: 1px solid rgba(110, 96, 60, 0.2);
   border-radius: 15px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 18px 45px rgba(50, 55, 92, 0.16);
+    0 18px 45px rgba(84, 74, 40, 0.18);
   overflow: hidden;
   position: relative;
 }
@@ -746,7 +747,7 @@ html[data-view-mode="compact"] #root {
   inset: 0;
   pointer-events: none;
   opacity: 0.22;
-  background-image: radial-gradient(rgba(72, 77, 112, 0.17) 0.5px, transparent 0.5px);
+  background-image: radial-gradient(rgba(94, 110, 70, 0.17) 0.5px, transparent 0.5px);
   background-size: 8px 8px;
 }
 
@@ -1437,4 +1438,46 @@ html[data-view-mode="compact"] #root {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+.species-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 14px 0 4px;
+}
+
+.species-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px 6px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.species-option .desk-character svg {
+  width: 44px;
+  height: auto;
+}
+
+.species-option:hover {
+  border-color: var(--mint);
+}
+
+.species-option.is-selected {
+  border-color: var(--lilac);
+  background: rgba(94, 156, 91, 0.12);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.species-random {
+  font-size: 26px;
+  line-height: 1.35;
 }
