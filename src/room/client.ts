@@ -11,7 +11,7 @@ import type {
 export type RoomInvite = {
   roomId: string;
   inviteToken: string;
-  inviteExpiresAt: string;
+  inviteExpiresAt?: string;
 };
 
 export type RoomSessionSnapshot = {
@@ -38,6 +38,18 @@ export type RoomTransport = {
     payload: { value: string; userId: string },
   ): Promise<void>;
 };
+
+export type RoomApi = Pick<
+  RoomClient,
+  | "ensureAnonymousSession"
+  | "createRoom"
+  | "joinRoom"
+  | "loadMembers"
+  | "saveProfile"
+  | "sendHeartbeat"
+  | "subscribe"
+  | "sendEmote"
+>;
 
 type CreateRoomRow = {
   room_id: string;
