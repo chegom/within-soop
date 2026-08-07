@@ -26,6 +26,13 @@
       "csp": null
     }
   },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["gyeot"]
+      }
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",

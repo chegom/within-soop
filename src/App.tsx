@@ -4,10 +4,21 @@ import {
   FOREST_SPECIES,
   ForestCharacter,
   isForestSpecies,
-  pickRandomForestSpecies,
   speciesLabel,
   type ForestSpecies,
 } from "./components/ForestCharacter";
+import { RoomSetup } from "./components/RoomSetup";
+import { createRoomClient, type RoomSessionSnapshot } from "./room/client";
+import { inviteUrl } from "./room/invite";
+import {
+  createGuestProfile,
+  normalizeDisplayName,
+  normalizeIntro,
+  pickRecommendedSpecies,
+} from "./room/profile";
+import { buildSeats, isMemberOnline } from "./room/state";
+import type { GuestProfile, RoomMember } from "./room/types";
+import { useRoom } from "./room/useRoom";
 import "./App.css";
 
 type AiSessionSnapshot = {
@@ -16,105 +27,58 @@ type AiSessionSnapshot = {
   startedAt: number | null;
 };
 
-type RoomMate = {
-  id: string;
-  name: string;
-  intro: string;
-  status: string;
-  tool: string;
-  minutes: number;
-  species: ForestSpecies;
-};
-
 type ViewMode = "full" | "compact";
-type AiTool = "Codex" | "Claude Code";
-
-// The compact header uses the supplied app marks directly. Keeping them local
-// makes the widget work without downloading a logo at runtime.
-const toolLogoSource: Record<AiTool, string> = {
-  Codex:
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAcCAIAAACPoCp1AAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAIKADAAQAAAABAAAAHAAAAADIVzd0AAADQElEQVRIDe2Wvy9zURjHXVo/+kNV/QwGgg5tgsFf0EE6i7B1amw2jKwiEYnJSmKyWUTSxNCBRZB2kAgNUVo/qvf2lmq174fjvZG84t5KbO8d6txznuf7Pc/z/Z5zSaVSqeI3n8rfBH/D/k+g2+Ffb5FJdwtfBhSLxXw+//r6yqrJZDKbzZIkfRlZNkEul0un04VCAdw3REkqFYsw1dTUOByOj8lPVJLxc0Dkw8PDcy7X4HBYrdZPIBUUlMlkZFmuf38+LxklAD2RTJpNpsbGRrpBBbFYjEF3d3dl5YeQ0Nze3tIuYjQOowT39/d0w/WeGY/H19fX2TIolOLxeADlt6uri5mbmxsm7Xa74DDkoudnGpMT6GxzbW2tr69vamqqp6cnGo2mUilat7S0tLe3B2hzczO9EvrzaogAVZ1OJ9GKoiwvL7PHoaGhlZWV6urq2dnZurq6/v7+QCCwtbUFdFVVlcVqZSAq0HcRe+EB5eXlZXV1lda73e7z8/OmpiaXywVfb2/v0dGRxWJBGDqJzHabDTEEgX4FNIedEn1yckIpk5OTYCHs7u7u8fExDYF7fHzc6/Umk8lEIkEkZhVGYKxPwPbFIVJV1WazIeDl5SVAPp9venp6fn7+7OxsYWGBzgSDwVAo9PT0BC6uQy1DBASJB0lJRgYU3tzcZABKNpttaWmhgkgkQgBqU+XfjLe/+hVQr9gLQAMDA7gFm8/NzZE8MzOzuLiIkVpbW5Hk6uoKSjomCKiJgb7I3AEYUeQA1NnZyWZxJJpjf7/fHw6HWb2+vt7f3+eVCyNfKDBjlAA9KYJWoG1HRwfVjI6O4hYkAYumN7w/+Ir5kZERoBVZJljsydBJxkggtre3o/b29vbOzs7w8DB+PTg4QNjBwcGNjY22traJiQlA2T5mIlhcIYYISKNL2BxTMr64uDg9PcVdh4eHWJNWcE+MjY3V1taiAb2ipPIqEMVydshHTO1245MAAadEEPN6d3cHNK0TKfwarUAkPD4+ZlS13m7nNAgNxTzFyYqSVVVuFJY09LIJSAALp6OKqIN/qviSCXdySWjFaRzlVaClMaAh4nxQyr8fMi3y5wQaxPcD/ZP8fb7u6h8LGMCKQ5DZeQAAAABJRU5ErkJggg==",
-  "Claude Code":
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAATCAIAAAB+9pigAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAIKADAAQAAAABAAAAEwAAAABKB6ClAAADnUlEQVQ4EYVUz28bRRidb2Znd53YjtLYVkQaJaKiSlEvPaQQkABVAVGEAFGVW2+99MaFG/8DHLly49JzpR4qDrQlzQEqUCNsgpLKcdNsTeQGx87u/ODNbh0b1w6fLHs8P977vve9Gdr64zf2v0GGMUOMhAwFaTKesdYKnmhjtSaL1bHhTU0Vxy5mC2TxK0gcduPba48OEutxCwKmzdvnF8+cLicabG7PyKD93e1swTKLHEdsIi14cG+9ur5RW1yc84WPPQ6RWH03KoT8k0vL+dBXxnEMgrgx4phgBHQ6JQS/9/DP7b3W5ZXXp6eKgqcVMUbEDtqd36tb1ceNK++tyEAyq18G4SktmEdEloJW+s6DR++cnSnYdqe5cxDV/4nq7ah+sFcXnb+XXy1tPTms1fekh6JewGSD7NsDcKaLg/uPRJaTUCb+7ubanfXNL+K1pvRIJYoEMXSVODOGe1LYqFb5erP57Y1Li/MVo8CB2npSEzmCkQH9BFG7Y374aXOC6btb0d3a0y/fXJj1SaeZkhDfP9xNsK186pdq8/5GtHRmoa06PewM1fYJ+rTZEvFkf2e/tiHVkbETeV++Ugx8D5mjVA4US7Y44XPizywZybuNjXbNY/NLLO02MBygZX2CoTqIy7jxOPjx5seV+fWIXyjnV2cDGN9p4NzCmGZXz5Ykp28aRx/MdJcb1cMHUeH0knH6uHWn+QkSQehYSM8z16afXi3ykMWxEr1+OQ6E1tpoe720k1S8gu7GUjrzug65yCoYb1Mic/hcNZ9Ywbr3b8XbfwkukBiUwQfnuXEOxI2gMJdbveLl8jYs+jNzxwRulY2XCCf5RDEonILgR7/+DI/jRbAc3gF+KgO64W605ULIudf8YtkaZbQ67iWyQDlje+DYAaAS11GjkSYVZkzrGU0WWABbKd1q8skpgs4qxgarlTVDFw2Cwc0nBlLgEMMk/sK56c9vsCAsLL9fufZV6dPr1s9NvvVR/t3PDHDd2+SkP07/xdjieC+yi9f71//FPJ5MawwTHgoyXBiZ057v3lF3VbhN4gwdZwZB3JgGJBok78MjKauCcxeNEExS+MZlWZ6nJCEvmLy4ykuzOBWsfMjDfOrMERWMd1GPBL3iyJ2hodrjEt7EAIuEVwIdBbBgpHn60jl3DcWJTU73QkRcLwG3uK4nad3AZSxBf/FqEFNgA2U6OQQPF7Vaz7NJSDZOpd6GYYzBI5kpX8Jn/wJNTrax/tviTwAAAABJRU5ErkJggg==",
-};
-
-const previewRoomMates: RoomMate[] = [
-  {
-    id: "momo",
-    name: "Momo",
-    intro: "오늘도 천천히 만들어요",
-    status: "커피 마시는 중",
-    tool: "Claude",
-    minutes: 23,
-    species: "rabbit",
-  },
-  {
-    id: "devcat",
-    name: "DevCat",
-    intro: "작은 걸 오래 만드는 중",
-    status: "AI 작업 중",
-    tool: "Codex",
-    minutes: 72,
-    species: "fox",
-  },
-  {
-    id: "june",
-    name: "June",
-    intro: "오늘의 한 줄부터",
-    status: "책 보는 중",
-    tool: "Codex",
-    minutes: 8,
-    species: "bird",
-  },
-  {
-    id: "bori",
-    name: "Bori",
-    intro: "조용히 몰입하고 있어요",
-    status: "쉬는 중",
-    tool: "Claude",
-    minutes: 124,
-    species: "bear",
-  },
-  {
-    id: "mina",
-    name: "Mina",
-    intro: "좋은 흐름을 기다리는 중",
-    status: "산책 중",
-    tool: "Claude",
-    minutes: 35,
-    species: "squirrel",
-  },
-  {
-    id: "noah",
-    name: "Noah",
-    intro: "하나씩 고치는 중",
-    status: "AI 작업 중",
-    tool: "Codex",
-    minutes: 17,
-    species: "mole",
-  },
-];
+type IconName = "edit" | "users" | "collapse" | "expand" | "close" | "copy";
 
 const emotes = ["👋", "☕", "🔥", "✨"];
-const globalCompanionCount = 312;
+
+function loadGuestProfile(): GuestProfile {
+  const savedSpecies = localStorage.getItem("gyeot:species");
+  const savedName = localStorage.getItem("gyeot:display-name");
+  const savedIntro = localStorage.getItem("gyeot:intro");
+
+  if (savedName && isForestSpecies(savedSpecies)) {
+    return {
+      displayName: normalizeDisplayName(savedName),
+      species: savedSpecies,
+      intro: normalizeIntro(savedIntro ?? ""),
+    };
+  }
+
+  const recommendation = createGuestProfile(Math.random);
+  localStorage.setItem("gyeot:display-name", recommendation.displayName);
+  localStorage.setItem("gyeot:species", recommendation.species);
+  localStorage.setItem("gyeot:intro", recommendation.intro);
+  return recommendation;
+}
+
+function storeGuestProfile(profile: GuestProfile) {
+  localStorage.setItem("gyeot:display-name", profile.displayName);
+  localStorage.setItem("gyeot:species", profile.species);
+  localStorage.setItem("gyeot:intro", profile.intro);
+}
 
 function formatDuration(totalSeconds: number) {
   const safeSeconds = Math.max(0, totalSeconds);
   const hours = Math.floor(safeSeconds / 3600);
   const minutes = Math.floor((safeSeconds % 3600) / 60);
-
-  if (hours > 0) {
-    return minutes > 0 ? `${hours}시간 ${minutes}분째` : `${hours}시간째`;
-  }
-
-  if (minutes > 0) {
-    return `${minutes}분째`;
-  }
-
+  if (hours > 0) return minutes > 0 ? `${hours}시간 ${minutes}분째` : `${hours}시간째`;
+  if (minutes > 0) return `${minutes}분째`;
   return "방금 시작";
 }
 
-type IconName = "edit" | "users" | "spark" | "collapse" | "expand" | "close";
+function remoteStatus(member: RoomMember, now: number) {
+  if (!isMemberOnline(member, now)) return "연결 끊김";
+  return member.active ? "함께 작업 중" : "자리 비움";
+}
+
+function connectionLabel(connection: ReturnType<typeof useRoom>["connection"]) {
+  if (connection === "connected") return "연결됨";
+  if (connection === "reconnecting") return "연결 다시 시도 중";
+  if (connection === "connecting") return "연결 중";
+  if (connection === "error") return "연결 확인 필요";
+  return "연결 설정 필요";
+}
 
 function Icon({ name }: { name: IconName }) {
   const paths: Record<IconName, React.ReactNode> = {
@@ -125,9 +89,6 @@ function Icon({ name }: { name: IconName }) {
         <circle cx="9" cy="7" r="4" />
         <path d="M22 20v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
       </>
-    ),
-    spark: (
-      <path d="m12 3 1.25 4.75L18 9l-4.75 1.25L12 15l-1.25-4.75L6 9l4.75-1.25L12 3Zm7 12 .75 2.25L22 18l-2.25.75L19 21l-.75-2.25L16 18l2.25-.75L19 15Z" />
     ),
     collapse: (
       <>
@@ -142,28 +103,10 @@ function Icon({ name }: { name: IconName }) {
       </>
     ),
     close: <path d="m6 6 12 12M18 6 6 18" />,
+    copy: <><rect x="8" y="8" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" /></>,
   };
 
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      {paths[name]}
-    </svg>
-  );
-}
-
-function AiToolMark({ tool, active }: { tool: AiTool; active: boolean }) {
-  return (
-    <span
-      className={`compact-tool-signal ${tool === "Codex" ? "is-codex" : "is-claude"} ${active ? "is-active" : "is-idle"}`}
-      data-tooltip={tool}
-      aria-label={active ? `${tool} 세션 감지됨` : `${tool} 세션 대기 중`}
-    >
-      <span className="compact-tool-logo-frame">
-        <img className="compact-tool-logo" src={toolLogoSource[tool]} alt="" />
-        <i className="compact-tool-status-dot" aria-hidden="true" />
-      </span>
-    </span>
-  );
+  return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
 }
 
 function App() {
@@ -175,8 +118,12 @@ function App() {
     tools: [],
     startedAt: null,
   });
-  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
-  const [emote, setEmote] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now);
+  const [profile, setProfile] = useState<GuestProfile>(loadGuestProfile);
+  const [draftName, setDraftName] = useState(profile.displayName);
+  const [draftIntro, setDraftIntro] = useState(profile.intro);
+  const [draftSpecies, setDraftSpecies] = useState<ForestSpecies>(profile.species);
+  const [isEditingIntro, setIsEditingIntro] = useState(false);
   const [showCompactEmotes, setShowCompactEmotes] = useState(false);
   const [showCompactIntro, setShowCompactIntro] = useState(false);
   const [usesNativeCompactOpacity, setUsesNativeCompactOpacity] = useState(false);
@@ -184,39 +131,16 @@ function App() {
     const saved = Number(localStorage.getItem("gyeot:compact-opacity") ?? "70");
     return Number.isFinite(saved) ? Math.min(100, Math.max(5, saved)) : 70;
   });
-  const [intro, setIntro] = useState(
-    () => localStorage.getItem("gyeot:intro") ?? "조용히 무언가를 만드는 중",
-  );
-  const [draftIntro, setDraftIntro] = useState(intro);
-  const [isEditingIntro, setIsEditingIntro] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [mySpecies, setMySpecies] = useState<ForestSpecies>(() => {
-    const saved = localStorage.getItem("gyeot:species");
-    return isForestSpecies(saved) ? saved : pickRandomForestSpecies();
-  });
-  const [hasPinnedSpecies, setHasPinnedSpecies] = useState(
-    () => isForestSpecies(localStorage.getItem("gyeot:species")),
+  const roomClient = useMemo(() => createRoomClient(), []);
+  const roomSession = useMemo<RoomSessionSnapshot>(
+    () => ({ active: session.active, startedAt: session.startedAt }),
+    [session.active, session.startedAt],
   );
-
-  const chooseSpecies = (next: ForestSpecies | null) => {
-    if (next === null) {
-      localStorage.removeItem("gyeot:species");
-      setHasPinnedSpecies(false);
-      setMySpecies(pickRandomForestSpecies());
-      setNotice("실행할 때마다 랜덤 동물로 나와요");
-      return;
-    }
-    localStorage.setItem("gyeot:species", next);
-    setHasPinnedSpecies(true);
-    setMySpecies(next);
-    setNotice(`이제 ${speciesLabel[next]}(으)로 나와요`);
-  };
+  const room = useRoom({ client: roomClient, profile, session: roomSession });
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setNow(Math.floor(Date.now() / 1000));
-    }, 1000);
-
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -224,7 +148,6 @@ function App() {
     const isTauri = "__TAURI_INTERNALS__" in window;
     document.documentElement.dataset.viewMode = viewMode;
     localStorage.setItem("gyeot:view-mode", viewMode);
-
     if (isTauri) {
       void invoke("set_window_mode", { compact: viewMode === "compact" }).catch(() => {
         setNotice("창 크기를 바꾸지 못했어요");
@@ -241,7 +164,6 @@ function App() {
       setUsesNativeCompactOpacity(false);
       return;
     }
-
     const opacity = viewMode === "compact" ? compactOpacity / 100 : 1;
     void invoke<boolean>("set_window_opacity", { opacity })
       .then(setUsesNativeCompactOpacity)
@@ -254,7 +176,6 @@ function App() {
   useEffect(() => {
     let cancelled = false;
     const isTauri = "__TAURI_INTERNALS__" in window;
-
     const detectSession = async () => {
       if (!isTauri) {
         if (!cancelled) {
@@ -266,7 +187,6 @@ function App() {
         }
         return;
       }
-
       try {
         const nextSession = await invoke<AiSessionSnapshot>("detect_ai_session");
         if (!cancelled) setSession(nextSession);
@@ -274,10 +194,8 @@ function App() {
         if (!cancelled) setNotice("세션 감지를 다시 시도하고 있어요");
       }
     };
-
     void detectSession();
-    const detector = window.setInterval(detectSession, 4000);
-
+    const detector = window.setInterval(detectSession, 4_000);
     return () => {
       cancelled = true;
       window.clearInterval(detector);
@@ -285,61 +203,112 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!emote) return;
-    const timer = window.setTimeout(() => setEmote(null), 2400);
-    return () => window.clearTimeout(timer);
-  }, [emote]);
-
-  useEffect(() => {
     if (!notice) return;
-    const timer = window.setTimeout(() => setNotice(null), 2600);
+    const timer = window.setTimeout(() => setNotice(null), 2_600);
     return () => window.clearTimeout(timer);
   }, [notice]);
 
   const sessionDuration = useMemo(() => {
     if (!session.active || !session.startedAt) return "AI 세션 기다리는 중";
-    return formatDuration(now - session.startedAt);
+    return formatDuration(Math.floor(now / 1_000) - session.startedAt);
   }, [now, session.active, session.startedAt]);
-
   const activeTool = session.tools.length > 0 ? session.tools.join(" + ") : "자리 비움";
 
-  const seats = useMemo(
-    () => [
-      { type: "mate" as const, data: previewRoomMates[0] },
-      { type: "mate" as const, data: previewRoomMates[1] },
-      { type: "self" as const },
-      { type: "mate" as const, data: previewRoomMates[2] },
-      { type: "mate" as const, data: previewRoomMates[3] },
-      { type: "mate" as const, data: previewRoomMates[4] },
-      { type: "empty" as const },
-      { type: "mate" as const, data: previewRoomMates[5] },
-      { type: "empty" as const },
-      { type: "empty" as const },
-    ],
-    [],
+  const selfMember = useMemo<RoomMember>(() => {
+    const ownMember = room.members.find((member) => member.userId === room.userId);
+    return ownMember ?? {
+      roomId: room.roomId ?? "",
+      userId: room.userId ?? "local-member",
+      ...profile,
+      active: session.active,
+      startedAt: session.startedAt ? session.startedAt * 1_000 : null,
+      lastSeenAt: now,
+    };
+  }, [now, profile, room.members, room.roomId, room.userId, session.active, session.startedAt]);
+  const peers = useMemo(
+    () => room.members.filter((member) => member.userId !== selfMember.userId),
+    [room.members, selfMember.userId],
   );
+  const seats = useMemo(() => buildSeats(selfMember, peers), [peers, selfMember]);
+  const roomMemberCount = room.roomId ? Math.max(1, room.members.length) : 0;
+
+  const persistProfile = (nextProfile: GuestProfile) => {
+    setProfile(nextProfile);
+    storeGuestProfile(nextProfile);
+    if (room.roomId) {
+      void room.saveProfile(nextProfile).catch(() => {
+        setNotice("소개를 동기화하지 못했어요");
+      });
+    }
+  };
 
   const saveIntro = () => {
-    const trimmed = draftIntro.trim() || "조용히 무언가를 만드는 중";
-    setIntro(trimmed);
-    setDraftIntro(trimmed);
-    localStorage.setItem("gyeot:intro", trimmed);
+    persistProfile({
+      displayName: normalizeDisplayName(draftName),
+      species: draftSpecies,
+      intro: normalizeIntro(draftIntro),
+    });
     setIsEditingIntro(false);
     setShowCompactIntro(false);
     setNotice("소개를 바꿨어요");
   };
 
-  const showCompact = () => {
-    setIsEditingIntro(false);
-    setViewMode("compact");
+  const openIntroEditor = () => {
+    setDraftName(profile.displayName);
+    setDraftIntro(profile.intro);
+    setDraftSpecies(profile.species);
+    setIsEditingIntro(true);
+  };
+
+  const saveCompactIntro = () => {
+    persistProfile({ ...profile, intro: normalizeIntro(draftIntro) });
+    setShowCompactIntro(false);
+    setNotice("소개를 바꿨어요");
+  };
+
+  const createRoom = async () => {
+    const nextProfile = {
+      ...profile,
+      displayName: normalizeDisplayName(profile.displayName),
+      intro: normalizeIntro(profile.intro),
+    };
+    persistProfile(nextProfile);
+    await room.createRoom();
+    setNotice("작업실을 열었어요");
+  };
+
+  const joinRoom = async (token: string) => {
+    const nextProfile = {
+      ...profile,
+      displayName: normalizeDisplayName(profile.displayName),
+      intro: normalizeIntro(profile.intro),
+    };
+    persistProfile(nextProfile);
+    await room.joinRoom(token);
+    setNotice("작업실에 참여했어요");
+  };
+
+  const sendEmote = async (value: string) => {
+    try {
+      await room.sendEmote(value);
+    } catch {
+      setNotice("이모티콘을 보내지 못했어요");
+    }
+  };
+
+  const copyInvite = async () => {
+    if (!room.invite) return;
+    try {
+      await navigator.clipboard.writeText(inviteUrl(room.invite.inviteToken));
+      setNotice("초대 링크를 복사했어요");
+    } catch {
+      setNotice("초대 링크를 복사하지 못했어요");
+    }
   };
 
   const closeWindow = () => {
-    if ("__TAURI_INTERNALS__" in window) {
-      void invoke("close_window");
-    } else {
-      setNotice("앱에서는 이 버튼으로 창을 닫을 수 있어요");
-    }
+    if ("__TAURI_INTERNALS__" in window) void invoke("close_window");
+    else setNotice("앱에서는 이 버튼으로 창을 닫을 수 있어요");
   };
 
   const beginCompactDrag = (event: React.MouseEvent<HTMLElement>) => {
@@ -352,43 +321,32 @@ function App() {
     }
   };
 
-  if (viewMode === "compact") {
+  const updateSetupName = (displayName: string) => {
+    const nextProfile = { ...profile, displayName };
+    setProfile(nextProfile);
+    storeGuestProfile(nextProfile);
+  };
+
+  if (viewMode === "compact" && room.roomId) {
     return (
       <div
         className="compact-widget"
         style={{ opacity: usesNativeCompactOpacity ? 1 : compactOpacity / 100 }}
         onMouseDown={beginCompactDrag}
-        onClick={() => {
-          setShowCompactEmotes(false);
-        }}
+        onClick={() => setShowCompactEmotes(false)}
         onContextMenu={(event) => event.preventDefault()}
       >
         <header className="compact-header" data-tauri-drag-region>
           <div className="compact-grab" data-tauri-drag-region>
-            <span className="grip-dots" data-tauri-drag-region aria-hidden="true">
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-            </span>
+            <span className="grip-dots" data-tauri-drag-region aria-hidden="true"><i /><i /><i /><i /><i /><i /></span>
             <span className="compact-logo" data-tauri-drag-region>곁</span>
             <span className={`compact-live ${session.active ? "is-active" : ""}`} data-tauri-drag-region>
-              <i /> {session.active ? "함께 있음" : "세션 기다리는 중"}
-            </span>
-            <span className="compact-tool-signals compact-header-tools" aria-label="AI 세션 감지 상태">
-              <AiToolMark tool="Codex" active={session.tools.includes("Codex")} />
-              <AiToolMark tool="Claude Code" active={session.tools.includes("Claude Code")} />
+              <i /> {session.active ? "함께 작업 중" : "자리 비움"}
             </span>
           </div>
           <div className="compact-controls">
-            <button type="button" onClick={() => setViewMode("full")} aria-label="큰 화면으로 보기">
-              <Icon name="expand" />
-            </button>
-            <button type="button" onClick={closeWindow} aria-label="곁 닫기">
-              <Icon name="close" />
-            </button>
+            <button type="button" onClick={() => setViewMode("full")} aria-label="큰 화면으로 보기"><Icon name="expand" /></button>
+            <button type="button" onClick={closeWindow} aria-label="곁 닫기"><Icon name="close" /></button>
           </div>
         </header>
 
@@ -404,53 +362,47 @@ function App() {
               }}
               aria-label="이모티콘 메뉴 열기"
             >
-              <ForestCharacter species={mySpecies} active={session.active} emote={emote} />
+              <ForestCharacter species={selfMember.species} active={session.active} emote={room.emotes[selfMember.userId]?.value} />
             </button>
             <button
               type="button"
               className="compact-intro-bubble"
               onClick={(event) => {
                 event.stopPropagation();
-                setDraftIntro(intro);
+                setDraftIntro(profile.intro);
                 setShowCompactIntro(true);
               }}
               title="말풍선 고치기"
             >
-              “{intro}”
+              “{profile.intro}”
             </button>
           </div>
-
           <div className="compact-copy">
-            <h1>
-              {session.active ? sessionDuration : "쉬는 중"}
-            </h1>
-            <div className="compact-peers" aria-label="함께 작업 중인 동료 미리보기">
+            <h1>{session.active ? sessionDuration : "쉬는 중"}</h1>
+            <div className="compact-peers" aria-label="같은 방에 있는 사람">
               <span className="compact-desk-line" />
-              {previewRoomMates.slice(0, 6).map((mate) => (
-                <div className="compact-peer" key={mate.id}>
-                  <ForestCharacter species={mate.species} active />
-                  <div className="compact-peer-hover-card">
-                    <strong>{mate.name}</strong>
-                    <span>{mate.status}</span>
-                    <em>“{mate.intro}”</em>
+              {peers.slice(0, 6).map((member) => {
+                const online = isMemberOnline(member, now);
+                return (
+                  <div className="compact-peer" key={member.userId}>
+                    <ForestCharacter species={member.species} active={online && member.active} emote={room.emotes[member.userId]?.value} />
+                    <div className="compact-peer-hover-card">
+                      <strong>{member.displayName}</strong>
+                      <span>{remoteStatus(member, now)}</span>
+                      <em>“{member.intro}”</em>
+                    </div>
                   </div>
-                </div>
-              ))}
-              {previewRoomMates.length > 6 && (
-                <span className="compact-more">+{previewRoomMates.length - 6}</span>
-              )}
+                );
+              })}
+              {peers.length > 6 && <span className="compact-more">+{peers.length - 6}</span>}
             </div>
           </div>
         </main>
 
         <footer className="compact-footer">
           <div className="compact-presence-summary">
-            <span className="compact-room-count">
-              <Icon name="users" /> 파티원 7명
-            </span>
-            <span className="compact-global-presence">
-              <Icon name="users" /> 지금 함께 {globalCompanionCount}명
-            </span>
+            <span className="compact-room-count"><Icon name="users" /> 파티원 {roomMemberCount}명</span>
+            <span className="compact-global-presence">{connectionLabel(room.connection)}</span>
           </div>
           <input
             className="compact-opacity-slider"
@@ -474,42 +426,33 @@ function App() {
                 role="menuitem"
                 onClick={(event) => {
                   event.stopPropagation();
-                  setEmote(item);
+                  void sendEmote(item);
                   setShowCompactEmotes(false);
                 }}
                 aria-label={`${item} 이모티콘 띄우기`}
-              >
-                {item}
-              </button>
+              >{item}</button>
             ))}
           </div>
         )}
 
         {showCompactIntro && (
-          <div
-            className="compact-intro-editor"
-            onClick={(event) => event.stopPropagation()}
-          >
+          <div className="compact-intro-editor" onClick={(event) => event.stopPropagation()}>
             <span>내 말풍선</span>
             <input
               value={draftIntro}
               onChange={(event) => setDraftIntro(event.target.value.slice(0, 28))}
               onKeyDown={(event) => {
-                if (event.key === "Enter") saveIntro();
+                if (event.key === "Enter") saveCompactIntro();
                 if (event.key === "Escape") setShowCompactIntro(false);
               }}
               autoFocus
               aria-label="작은 창 말풍선"
             />
-            <button type="button" onClick={saveIntro}>저장</button>
+            <button type="button" onClick={saveCompactIntro}>저장</button>
           </div>
         )}
 
-        {notice && (
-          <div className="compact-toast" role="status" aria-live="polite">
-            {notice}
-          </div>
-        )}
+        {notice && <div className="compact-toast" role="status" aria-live="polite">{notice}</div>}
       </div>
     );
   }
@@ -519,198 +462,122 @@ function App() {
       <header className="window-header" data-tauri-drag-region>
         <div className="brand" data-tauri-drag-region>
           <span className="brand-mark">곁</span>
-          <div data-tauri-drag-region>
-            <strong>곁</strong>
-            <span>혼자여도, 같은 방에서.</span>
-          </div>
+          <div data-tauri-drag-region><strong>곁</strong><span>혼자여도, 같은 방에서.</span></div>
         </div>
-
         <div className="window-header-actions">
           <div className={`local-status ${session.active ? "is-active" : ""}`}>
             <span className="status-dot" />
             {session.active ? `${activeTool} 감지됨` : "로컬 세션 대기 중"}
           </div>
-          <button type="button" className="compact-mode-button" onClick={showCompact}>
+          <button type="button" className="compact-mode-button" onClick={() => setViewMode("compact")} disabled={!room.roomId}>
             <Icon name="collapse" /> 작게 띄우기
           </button>
         </div>
       </header>
 
       <main className="main-content">
-        <section className="room-heading" aria-labelledby="room-title">
-          <div>
-            <span className="eyebrow">조용한 작업실</span>
-            <h1 id="room-title">누군가와 나란히 만드는 시간</h1>
-          </div>
-          <div className="room-meta">
-            <span className="preview-pill">
-              <Icon name="spark" /> 프로토타입 방
-            </span>
-            <span className="seat-count">
-              <Icon name="users" /> 7 / 10
-            </span>
-          </div>
-        </section>
-
-        <section className="shared-room" aria-label="최대 열 명의 작업 파티 미리보기">
-          <div className="room-note">
-            온라인 연결 전에는 함께할 방의 모습을 미리 보여주고 있어요.
-          </div>
-
-          <div className="desk-grid">
-            {[seats.slice(0, 5), seats.slice(5, 10)].map((row, rowIndex) => (
-              <div className="desk-row" key={rowIndex}>
-                {row.map((seat, seatIndex) => {
-                  const key = `${rowIndex}-${seatIndex}`;
-
-                  if (seat.type === "empty") {
-                    return (
-                      <div className="seat empty-seat" key={key} aria-label="빈 자리">
-                        <div className="empty-chair">+</div>
-                        <span>빈 자리</span>
-                      </div>
-                    );
-                  }
-
-                  if (seat.type === "self") {
-                    return (
-                      <button
-                        type="button"
-                        className={`seat self-seat ${session.active ? "is-active" : "is-away"}`}
-                        key={key}
-                        onClick={() => setIsEditingIntro(true)}
-                        aria-label="내 소개 수정"
-                      >
-                        <ForestCharacter
-                          species={mySpecies}
-                          active={session.active}
-                          emote={emote}
-                        />
-                        <strong>나</strong>
-                        <span className="seat-detail">
-                          {session.active ? `${activeTool} · ${sessionDuration}` : "세션을 시작하면 앉아요"}
-                        </span>
-                        <span className="you-label">MY SEAT</span>
-                      </button>
-                    );
-                  }
-
-                  const mate = seat.data;
-                  return (
-                    <button
-                      type="button"
-                      className="seat mate-seat"
-                      key={key}
-                      title={mate.intro}
-                      onClick={() => setNotice(`${mate.name} · “${mate.intro}”`)}
-                    >
-                      <ForestCharacter species={mate.species} active />
-                      <strong>{mate.name}</strong>
-                      <span className="seat-detail">
-                        {mate.status} · {formatDuration(mate.minutes * 60)}
-                      </span>
-                    </button>
-                  );
-                })}
+        {!room.roomId ? (
+          <RoomSetup
+            displayName={profile.displayName}
+            onDisplayNameChange={updateSetupName}
+            onCreate={createRoom}
+            onJoin={joinRoom}
+            connection={room.connection}
+            error={room.error}
+          />
+        ) : (
+          <>
+            <section className="room-heading" aria-labelledby="room-title">
+              <div>
+                <span className="eyebrow">조용한 작업실</span>
+                <h1 id="room-title">누군가와 나란히 만드는 시간</h1>
               </div>
-            ))}
-          </div>
-        </section>
+              <div className="room-meta">
+                <span className="seat-count"><Icon name="users" /> {roomMemberCount} / 10</span>
+              </div>
+            </section>
 
-        <footer className="session-bar">
-          <button type="button" className="intro-button" onClick={() => setIsEditingIntro(true)}>
-            <span className="intro-avatar">나</span>
-            <span>
-              <small>한 줄 소개</small>
-              <strong>“{intro}”</strong>
-            </span>
-            <Icon name="edit" />
-          </button>
+            {room.invite && (
+              <section className="room-invite" aria-label="방 초대">
+                <div><small>초대 코드</small><code>{room.invite.inviteToken}</code></div>
+                <button type="button" className="ghost-button" onClick={() => void copyInvite()}><Icon name="copy" /> 초대 링크 복사</button>
+              </section>
+            )}
 
-          <div className="emote-picker" aria-label="이모티콘 보내기">
-            <span>가볍게 인사하기</span>
-            <div>
-              {emotes.map((item) => (
-                <button
-                  type="button"
-                  key={item}
-                  onClick={() => setEmote(item)}
-                  aria-label={`${item} 이모티콘 띄우기`}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          </div>
-        </footer>
+            <section className="shared-room" aria-label="최대 열 명의 비공개 작업실">
+              <div className="room-note">이 방에 참여한 사람의 소개와 작업 상태만 보여요.</div>
+              <div className="desk-grid">
+                {[seats.slice(0, 5), seats.slice(5, 10)].map((row, rowIndex) => (
+                  <div className="desk-row" key={rowIndex}>
+                    {row.map((seat, seatIndex) => {
+                      const key = `${rowIndex}-${seatIndex}`;
+                      if (seat.type === "empty") {
+                        return <div className="seat empty-seat" key={key} aria-label="빈 자리"><div className="empty-chair">+</div><span>빈 자리</span></div>;
+                      }
+                      if (seat.type === "self") {
+                        return (
+                          <button type="button" className={`seat self-seat ${session.active ? "is-active" : "is-away"}`} key={key} onClick={openIntroEditor} aria-label="내 소개 수정">
+                            <ForestCharacter species={seat.data.species} active={session.active} emote={room.emotes[seat.data.userId]?.value} />
+                            <strong>나</strong>
+                            <span className="seat-detail">{session.active ? `${activeTool} · ${sessionDuration}` : "세션을 시작하면 앉아요"}</span>
+                            <span className="you-label">MY SEAT</span>
+                          </button>
+                        );
+                      }
+                      const online = isMemberOnline(seat.data, now);
+                      return (
+                        <button type="button" className={`seat mate-seat ${online ? "" : "is-offline"}`} key={key} title={seat.data.intro} onClick={() => setNotice(`${seat.data.displayName} · “${seat.data.intro}”`)}>
+                          <ForestCharacter species={seat.data.species} active={online && seat.data.active} emote={room.emotes[seat.data.userId]?.value} />
+                          <strong>{seat.data.displayName}</strong>
+                          <span className="seat-detail">{remoteStatus(seat.data, now)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <footer className="session-bar">
+              <button type="button" className="intro-button" onClick={openIntroEditor}>
+                <span className="intro-avatar">나</span>
+                <span><small>한 줄 소개</small><strong>“{profile.intro}”</strong></span>
+                <Icon name="edit" />
+              </button>
+              <div className="emote-picker" aria-label="이모티콘 보내기">
+                <span>가볍게 인사하기</span>
+                <div>{emotes.map((item) => <button type="button" key={item} onClick={() => void sendEmote(item)} aria-label={`${item} 이모티콘 띄우기`}>{item}</button>)}</div>
+              </div>
+            </footer>
+          </>
+        )}
       </main>
 
       {isEditingIntro && (
         <div className="dialog-backdrop" role="presentation" onMouseDown={() => setIsEditingIntro(false)}>
-          <section
-            className="intro-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="intro-dialog-title"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
+          <section className="intro-dialog" role="dialog" aria-modal="true" aria-labelledby="intro-dialog-title" onMouseDown={(event) => event.stopPropagation()}>
             <span className="eyebrow">내 자리</span>
             <h2 id="intro-dialog-title">짧게 나를 소개해요</h2>
-            <p>함께 있는 사람에게 이 한 줄만 보여요.</p>
+            <p>표시 이름, 동물 캐릭터, 이 한 줄만 함께 있는 사람에게 보여요.</p>
+            <label className="dialog-field"><span>표시 이름</span><input value={draftName} onChange={(event) => setDraftName(event.target.value.slice(0, 24))} aria-label="표시 이름" /></label>
             <div className="species-picker" role="radiogroup" aria-label="내 동물 고르기">
               {FOREST_SPECIES.map((item) => (
-                <button
-                  type="button"
-                  key={item}
-                  role="radio"
-                  aria-checked={hasPinnedSpecies && mySpecies === item}
-                  className={`species-option ${hasPinnedSpecies && mySpecies === item ? "is-selected" : ""}`}
-                  onClick={() => chooseSpecies(item)}
-                  title={speciesLabel[item]}
-                >
-                  <ForestCharacter species={item} active />
-                  <span>{speciesLabel[item]}</span>
+                <button type="button" key={item} role="radio" aria-checked={draftSpecies === item} className={`species-option ${draftSpecies === item ? "is-selected" : ""}`} onClick={() => setDraftSpecies(item)} title={speciesLabel[item]}>
+                  <ForestCharacter species={item} active /><span>{speciesLabel[item]}</span>
                 </button>
               ))}
-              <button
-                type="button"
-                role="radio"
-                aria-checked={!hasPinnedSpecies}
-                className={`species-option ${!hasPinnedSpecies ? "is-selected" : ""}`}
-                onClick={() => chooseSpecies(null)}
-              >
-                <span className="species-random">🎲</span>
-                <span>랜덤</span>
+              <button type="button" role="radio" aria-checked={false} className="species-option" onClick={() => setDraftSpecies(pickRecommendedSpecies(Math.random))}>
+                <span className="species-random">🎲</span><span>랜덤 추천</span>
               </button>
             </div>
-            <input
-              value={draftIntro}
-              onChange={(event) => setDraftIntro(event.target.value.slice(0, 28))}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") saveIntro();
-                if (event.key === "Escape") setIsEditingIntro(false);
-              }}
-              autoFocus
-              aria-label="한 줄 소개"
-            />
+            <label className="dialog-field"><span>한 줄 소개</span><input value={draftIntro} onChange={(event) => setDraftIntro(event.target.value.slice(0, 28))} onKeyDown={(event) => { if (event.key === "Enter") saveIntro(); if (event.key === "Escape") setIsEditingIntro(false); }} autoFocus aria-label="한 줄 소개" /></label>
             <div className="character-count">{draftIntro.length} / 28</div>
-            <div className="dialog-actions">
-              <button type="button" className="ghost-button" onClick={() => setIsEditingIntro(false)}>
-                취소
-              </button>
-              <button type="button" className="primary-button" onClick={saveIntro}>
-                소개 바꾸기
-              </button>
-            </div>
+            <div className="dialog-actions"><button type="button" className="ghost-button" onClick={() => setIsEditingIntro(false)}>취소</button><button type="button" className="primary-button" onClick={saveIntro}>소개 바꾸기</button></div>
           </section>
         </div>
       )}
 
-      {notice && (
-        <div className="toast" role="status" aria-live="polite">
-          {notice}
-        </div>
-      )}
+      {notice && <div className="toast" role="status" aria-live="polite">{notice}</div>}
     </div>
   );
 }
