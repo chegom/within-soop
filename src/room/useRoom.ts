@@ -31,6 +31,7 @@ function messageForError(error: unknown) {
 
 export function useRoom({ client, profile, session }: UseRoomOptions) {
   const [members, setMembers] = useState<RoomMember[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [invite, setInvite] = useState<RoomInvite | null>(null);
   const [connection, setConnection] = useState<RoomConnectionState>(
@@ -158,6 +159,7 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
 
   const createRoom = useCallback(async () => {
     if (!client) throw new Error("room_client_unavailable");
+    setUserId(await client.ensureAnonymousSession());
     const nextInvite = await client.createRoom(profile);
     localStorage.setItem(ACTIVE_ROOM_STORAGE_KEY, nextInvite.roomId);
     localStorage.setItem(ACTIVE_INVITE_STORAGE_KEY, nextInvite.inviteToken);
@@ -170,6 +172,7 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
       if (!client) throw new Error("room_client_unavailable");
       const roomToken = parseInviteToken(inviteInput);
       if (!roomToken) throw new Error("invalid_invite");
+      setUserId(await client.ensureAnonymousSession());
       const nextRoomId = await client.joinRoom(roomToken, profile);
       const nextInvite = { roomId: nextRoomId, inviteToken: roomToken };
       localStorage.setItem(ACTIVE_ROOM_STORAGE_KEY, nextRoomId);
@@ -205,8 +208,9 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
 
     void client
       .ensureAnonymousSession()
-      .then(async () => {
+      .then(async (anonymousUserId) => {
         if (cancelled) return;
+        setUserId(anonymousUserId);
         const initialInvite = await readInitialInvite();
         if (initialInvite) {
           await joinInvite(initialInvite);
@@ -252,14 +256,22 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
 
   const sendEmote = useCallback(
     async (value: string) => {
-      if (!client || !roomId) return;
-      await client.sendEmote(roomId, value);
+      const targetRoomId = roomId ?? currentRoomRef.current;
+      if (!client || !targetRoomId) return;
+      const senderId = userId ?? (await client.ensureAnonymousSession());
+      if (!userId) setUserId(senderId);
+      setEmotes((current) => ({
+        ...current,
+        [senderId]: { userId: senderId, value, expiresAt: Date.now() + 4_000 },
+      }));
+      await client.sendEmote(targetRoomId, value);
     },
-    [client, roomId],
+    [client, roomId, userId],
   );
 
   return {
     members,
+    userId,
     roomId,
     invite,
     connection,

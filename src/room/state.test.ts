@@ -36,4 +36,19 @@ describe("room state", () => {
     expect(seats[0]).toMatchObject({ type: "self", data: { userId: "user-1" } });
     expect(seats.filter((seat) => seat.type === "member")).toHaveLength(9);
   });
+
+  it("keeps a stale remote member visible as offline instead of working", () => {
+    const stalePeer = {
+      ...member,
+      userId: "user-2",
+      active: true,
+      lastSeenAt: 1_000,
+    };
+
+    const [selfSeat, peerSeat] = buildSeats(member, [stalePeer]);
+
+    expect(selfSeat).toMatchObject({ type: "self", data: { userId: "user-1" } });
+    expect(peerSeat).toMatchObject({ type: "member", data: { active: true } });
+    expect(isMemberOnline(stalePeer, 16_001)).toBe(false);
+  });
 });

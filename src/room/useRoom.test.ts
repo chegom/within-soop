@@ -134,6 +134,20 @@ describe("useRoom", () => {
     expect(result.current.emotes["user-2"]).toBeUndefined();
   });
 
+  it("shows a sent emote locally before the broadcast comes back", async () => {
+    const client = new FakeRoomClient();
+    const { result } = renderHook(() =>
+      useRoom({ client, profile, session: activeSession }),
+    );
+
+    await act(async () => {
+      await result.current.createRoom();
+      await result.current.sendEmote("👋");
+    });
+
+    expect(result.current.emotes["user-1"]?.value).toBe("👋");
+  });
+
   it("joins an invite passed through the desktop deep link", async () => {
     const client = new FakeRoomClient();
     const inviteToken = "b".repeat(48);
