@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { listenForInvite, readInitialInvite } from "./deepLink";
 import { parseInviteToken } from "./invite";
 import { isVisibleEmote } from "./state";
 import type {
@@ -41,6 +42,7 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
   const retryTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const retryAttemptRef = useRef(0);
   const currentRoomRef = useRef<string | null>(null);
+  const joinRoomRef = useRef<((inviteInput: string) => Promise<string>) | null>(null);
 
   const clearSubscription = useCallback(() => {
     unsubscribeRef.current?.();
@@ -127,39 +129,6 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
   );
 
   useEffect(() => {
-    let cancelled = false;
-    if (!client) {
-      setConnection("unconfigured");
-      return undefined;
-    }
-
-    void client
-      .ensureAnonymousSession()
-      .then(async () => {
-        if (cancelled) return;
-        const storedRoomId = localStorage.getItem(ACTIVE_ROOM_STORAGE_KEY);
-        const storedInviteToken = localStorage.getItem(ACTIVE_INVITE_STORAGE_KEY);
-        const storedInvite = storedInviteToken
-          ? { roomId: storedRoomId ?? "", inviteToken: storedInviteToken }
-          : null;
-        if (storedRoomId) await startRoom(storedRoomId, storedInvite);
-        else setConnection("connected");
-      })
-      .catch((initializationError) => {
-        if (!cancelled) {
-          setConnection("error");
-          setError(messageForError(initializationError));
-        }
-      });
-
-    return () => {
-      cancelled = true;
-      clearSubscription();
-      clearRetry();
-    };
-  }, [client, clearRetry, clearSubscription, startRoom]);
-
-  useEffect(() => {
     if (!client || !roomId) return undefined;
     const send = () => {
       void client.sendHeartbeat(roomId, session).catch((heartbeatError) => {
@@ -210,6 +179,67 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
     },
     [client, profile, startRoom],
   );
+
+  useEffect(() => {
+    joinRoomRef.current = joinRoom;
+  }, [joinRoom]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let unlisten: () => void = () => undefined;
+    if (!client) {
+      setConnection("unconfigured");
+      return undefined;
+    }
+
+    const joinInvite = async (token: string) => {
+      try {
+        await joinRoomRef.current?.(token);
+      } catch (joinError) {
+        if (!cancelled) {
+          setConnection("error");
+          setError(messageForError(joinError));
+        }
+      }
+    };
+
+    void client
+      .ensureAnonymousSession()
+      .then(async () => {
+        if (cancelled) return;
+        const initialInvite = await readInitialInvite();
+        if (initialInvite) {
+          await joinInvite(initialInvite);
+        } else {
+          const storedRoomId = localStorage.getItem(ACTIVE_ROOM_STORAGE_KEY);
+          const storedInviteToken = localStorage.getItem(ACTIVE_INVITE_STORAGE_KEY);
+          const storedInvite = storedInviteToken
+            ? { roomId: storedRoomId ?? "", inviteToken: storedInviteToken }
+            : null;
+          if (storedRoomId) await startRoom(storedRoomId, storedInvite);
+          else setConnection("connected");
+        }
+
+        const stopListening = await listenForInvite((token) => {
+          void joinInvite(token);
+        });
+        if (cancelled) stopListening();
+        else unlisten = stopListening;
+      })
+      .catch((initializationError) => {
+        if (!cancelled) {
+          setConnection("error");
+          setError(messageForError(initializationError));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      unlisten();
+      clearSubscription();
+      clearRetry();
+    };
+  }, [client, clearRetry, clearSubscription, startRoom]);
 
   const saveProfile = useCallback(
     async (nextProfile: GuestProfile) => {

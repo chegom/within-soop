@@ -167,9 +167,9 @@ fn detect_ai_session() -> AiSessionSnapshot {
             active_tools
                 .entry(tool)
                 .and_modify(|current| {
-                    *current = Some(current.map_or(process_started_at, |value| {
-                        value.max(process_started_at)
-                    }));
+                    *current = Some(
+                        current.map_or(process_started_at, |value| value.max(process_started_at)),
+                    );
                 })
                 .or_insert(Some(process_started_at));
         }
@@ -191,10 +191,7 @@ fn detect_ai_session() -> AiSessionSnapshot {
         }
     }
 
-    let now_secs = now
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+    let now_secs = now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
     let mut tracker = session_start_tracker()
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -366,6 +363,8 @@ fn start_window_drag(window: WebviewWindow) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             detect_ai_session,

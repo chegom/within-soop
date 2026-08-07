@@ -2,6 +2,19 @@
 
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const deepLink = vi.hoisted(() => ({
+  initialInvite: null as string | null,
+  onInvite: null as ((token: string) => void) | null,
+  readInitialInvite: vi.fn(),
+  listenForInvite: vi.fn(),
+}));
+
+vi.mock("./deepLink", () => ({
+  readInitialInvite: deepLink.readInitialInvite,
+  listenForInvite: deepLink.listenForInvite,
+}));
+
 import type {
   RoomApi,
   RoomConnectionListener,
@@ -20,6 +33,7 @@ const activeSession: RoomSessionSnapshot = { active: true, startedAt: 100 };
 
 class FakeRoomClient implements RoomApi {
   heartbeats: RoomSessionSnapshot[] = [];
+  joinedTokens: string[] = [];
   private listener: RoomConnectionListener | null = null;
 
   async ensureAnonymousSession() {
@@ -34,7 +48,8 @@ class FakeRoomClient implements RoomApi {
     };
   }
 
-  async joinRoom() {
+  async joinRoom(token: string) {
+    this.joinedTokens.push(token);
     return "room-1";
   }
 
@@ -67,6 +82,15 @@ describe("useRoom", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     localStorage.clear();
+    deepLink.initialInvite = null;
+    deepLink.onInvite = null;
+    deepLink.readInitialInvite.mockImplementation(async () => deepLink.initialInvite);
+    deepLink.listenForInvite.mockImplementation(async (onInvite) => {
+      deepLink.onInvite = onInvite;
+      return () => {
+        deepLink.onInvite = null;
+      };
+    });
   });
 
   afterEach(() => {
@@ -108,5 +132,23 @@ describe("useRoom", () => {
     });
 
     expect(result.current.emotes["user-2"]).toBeUndefined();
+  });
+
+  it("joins an invite passed through the desktop deep link", async () => {
+    const client = new FakeRoomClient();
+    const inviteToken = "b".repeat(48);
+    deepLink.initialInvite = inviteToken;
+
+    const { result } = renderHook(() =>
+      useRoom({ client, profile, session: activeSession }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(client.joinedTokens).toEqual([inviteToken]);
+    expect(result.current.roomId).toBe("room-1");
   });
 });
