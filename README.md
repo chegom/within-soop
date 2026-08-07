@@ -40,6 +40,23 @@ cargo test --manifest-path src-tauri/Cargo.toml
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
+## 실시간 방 개발
+
+개인 정보 없는 익명 사용자가 비공개 방에 참여하도록 Supabase를 사용합니다. URL과
+publishable key만 클라이언트 환경 변수에 넣고, secret/service key는 절대 앱이나
+Git에 넣지 않습니다.
+
+```bash
+cp .env.example .env
+npm run supabase:start
+npm run supabase:reset
+npm run supabase:test
+```
+
+로컬 Supabase는 이 프로젝트의 전용 `55321–55329` 포트를 사용합니다. 시작 결과에
+표시된 Project URL과 Publishable key를 `.env`에 채운 뒤 `npm run tauri dev`로
+동작을 확인합니다.
+
 ## 다음 단계
 
 1. 최소 계정과 실시간 heartbeat 서버

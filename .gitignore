@@ -7,3 +7,5 @@ src-tauri/gen/
 .omc/
 .playwright-cli/
 .worktrees/
+.env
+supabase/.temp/
