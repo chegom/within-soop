@@ -59,6 +59,19 @@ describe("RoomClient", () => {
     expect(transport.anonymousSignIns).toBe(1);
   });
 
+  it("shares an in-flight anonymous sign-in across concurrent room actions", async () => {
+    const transport = new FakeTransport(null);
+    const client = new RoomClient(transport);
+
+    const userIds = await Promise.all([
+      client.ensureAnonymousSession(),
+      client.ensureAnonymousSession(),
+    ]);
+
+    expect(userIds).toEqual(["user-1", "user-1"]);
+    expect(transport.anonymousSignIns).toBe(1);
+  });
+
   it("sends an emote on the private room topic for its own user", async () => {
     const transport = new FakeTransport("user-1");
     const client = new RoomClient(transport);

@@ -95,13 +95,26 @@ function toRoomMember(row: MemberRow): RoomMember {
 
 export class RoomClient {
   private userId: string | null = null;
+  private sessionPromise: Promise<string> | null = null;
 
   constructor(private readonly transport: RoomTransport) {}
 
   async ensureAnonymousSession() {
     if (this.userId) return this.userId;
-    this.userId = (await this.transport.getSession()) ?? (await this.transport.signInAnonymously());
-    return this.userId;
+    if (!this.sessionPromise) {
+      this.sessionPromise = (async () => {
+        this.userId =
+          (await this.transport.getSession()) ?? (await this.transport.signInAnonymously());
+        return this.userId;
+      })();
+    }
+
+    try {
+      return await this.sessionPromise;
+    } catch (error) {
+      this.sessionPromise = null;
+      throw error;
+    }
   }
 
   async createRoom(profile: GuestProfile): Promise<RoomInvite> {
