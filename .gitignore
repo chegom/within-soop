@@ -6,3 +6,4 @@ src-tauri/gen/
 .DS_Store
 .omc/
 .playwright-cli/
+.worktrees/
