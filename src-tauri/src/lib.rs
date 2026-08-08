@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use sysinfo::System;
+use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use tauri::{LogicalSize, PhysicalPosition, WebviewWindow};
 
 // IDE 확장(VS Code·Antigravity)이나 ChatGPT 앱의 세션은 프로세스 이름만으로
@@ -95,13 +95,17 @@ fn codex_sessions_root() -> Option<PathBuf> {
 
 fn has_recent_session_write(root: &Path, now: SystemTime, window: Duration) -> bool {
     let mut pending = vec![root.to_path_buf()];
-    let mut visited = 0usize;
+    let mut visited_entries = 0usize;
 
     while let Some(directory) = pending.pop() {
         let Ok(entries) = std::fs::read_dir(&directory) else {
             continue;
         };
         for entry in entries.flatten() {
+            visited_entries += 1;
+            if visited_entries > SESSION_FILE_SCAN_LIMIT {
+                return false;
+            }
             let Ok(file_type) = entry.file_type() else {
                 continue;
             };
@@ -122,7 +126,6 @@ fn has_recent_session_write(root: &Path, now: SystemTime, window: Duration) -> b
             if !name.ends_with(".jsonl") {
                 continue;
             }
-            visited += 1;
             if let Ok(modified) = entry.metadata().and_then(|metadata| metadata.modified()) {
                 match now.duration_since(modified) {
                     Ok(age) if age <= window => return true,
@@ -130,9 +133,6 @@ fn has_recent_session_write(root: &Path, now: SystemTime, window: Duration) -> b
                     Err(_) => return true,
                     Ok(_) => {}
                 }
-            }
-            if visited >= SESSION_FILE_SCAN_LIMIT {
-                return false;
             }
         }
     }
@@ -144,34 +144,53 @@ fn session_start_tracker() -> &'static Mutex<HashMap<&'static str, u64>> {
     TRACKER.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
+fn process_system() -> &'static Mutex<System> {
+    static SYSTEM: OnceLock<Mutex<System>> = OnceLock::new();
+    SYSTEM.get_or_init(|| Mutex::new(System::new()))
+}
+
 #[tauri::command]
 fn detect_ai_session() -> AiSessionSnapshot {
-    let system = System::new_all();
     let mut active_tools: HashMap<&'static str, Option<u64>> = HashMap::new();
 
-    for process in system.processes().values() {
-        let process_name = process.name().to_string_lossy();
-        let executable_path = process
-            .exe()
-            .map(|path| path.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        let command_line = process
-            .cmd()
-            .iter()
-            .map(|part| part.to_string_lossy())
-            .collect::<Vec<_>>()
-            .join(" ");
+    {
+        let mut system = process_system()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        system.refresh_processes_specifics(
+            ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing()
+                .with_cmd(UpdateKind::OnlyIfNotSet)
+                .with_exe(UpdateKind::OnlyIfNotSet)
+                .without_tasks(),
+        );
 
-        if let Some(tool) = identify_ai_tool(&process_name, &executable_path, &command_line) {
-            let process_started_at = process.start_time();
-            active_tools
-                .entry(tool)
-                .and_modify(|current| {
-                    *current = Some(
-                        current.map_or(process_started_at, |value| value.max(process_started_at)),
-                    );
-                })
-                .or_insert(Some(process_started_at));
+        for process in system.processes().values() {
+            let process_name = process.name().to_string_lossy();
+            let executable_path = process
+                .exe()
+                .map(|path| path.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let command_line = process
+                .cmd()
+                .iter()
+                .map(|part| part.to_string_lossy())
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            if let Some(tool) = identify_ai_tool(&process_name, &executable_path, &command_line) {
+                let process_started_at = process.start_time();
+                active_tools
+                    .entry(tool)
+                    .and_modify(|current| {
+                        *current = Some(
+                            current
+                                .map_or(process_started_at, |value| value.max(process_started_at)),
+                        );
+                    })
+                    .or_insert(Some(process_started_at));
+            }
         }
     }
 
@@ -340,7 +359,7 @@ fn set_window_opacity(window: WebviewWindow, opacity: f64) -> Result<bool, Strin
     #[cfg(target_os = "macos")]
     {
         set_macos_window_opacity(&window, opacity)?;
-        return Ok(true);
+        Ok(true)
     }
 
     #[cfg(not(target_os = "macos"))]

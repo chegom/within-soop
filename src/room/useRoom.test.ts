@@ -21,6 +21,7 @@ import type {
   RoomInvite,
   RoomSessionSnapshot,
 } from "./client";
+import type { RoomMember } from "./types";
 import { useRoom } from "./useRoom";
 
 const profile = {
@@ -31,9 +32,20 @@ const profile = {
 
 const activeSession: RoomSessionSnapshot = { active: true, startedAt: 100 };
 
+const selfMember: RoomMember = {
+  roomId: "room-1",
+  userId: "user-1",
+  ...profile,
+  active: true,
+  startedAt: 100_000,
+  lastSeenAt: 100_000,
+};
+
 class FakeRoomClient implements RoomApi {
   heartbeats: RoomSessionSnapshot[] = [];
   joinedTokens: string[] = [];
+  loadMembersCalls = 0;
+  members: RoomMember[] = [selfMember];
   private listener: RoomConnectionListener | null = null;
 
   async ensureAnonymousSession() {
@@ -54,7 +66,8 @@ class FakeRoomClient implements RoomApi {
   }
 
   async loadMembers() {
-    return [];
+    this.loadMembersCalls += 1;
+    return this.members;
   }
 
   async saveProfile() {}
@@ -75,6 +88,10 @@ class FakeRoomClient implements RoomApi {
 
   emitEmote(userId: string, value: string) {
     this.listener?.onEmote(value, userId);
+  }
+
+  emitStatus(state: Parameters<RoomConnectionListener["onStatus"]>[0]) {
+    this.listener?.onStatus(state);
   }
 }
 
@@ -164,5 +181,74 @@ describe("useRoom", () => {
 
     expect(client.joinedTokens).toEqual([inviteToken]);
     expect(result.current.roomId).toBe("room-1");
+  });
+
+  it("keeps refreshing with backoff until the realtime channel reconnects", async () => {
+    const client = new FakeRoomClient();
+    const { result } = renderHook(() =>
+      useRoom({ client, profile, session: activeSession }),
+    );
+
+    await act(async () => {
+      await result.current.createRoom();
+    });
+    client.loadMembersCalls = 0;
+
+    act(() => client.emitStatus("reconnecting"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+
+    expect(client.loadMembersCalls).toBe(2);
+    expect(result.current.connection).toBe("reconnecting");
+
+    act(() => client.emitStatus("connected"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+
+    expect(result.current.connection).toBe("connected");
+    expect(client.loadMembersCalls).toBe(3);
+  });
+
+  it("clears a stored room when the anonymous user no longer has access", async () => {
+    const client = new FakeRoomClient();
+    client.members = [];
+    localStorage.setItem("gyeot:active-room-id", "stale-room");
+    localStorage.setItem("gyeot:active-invite-token", "d".repeat(48));
+
+    const { result } = renderHook(() =>
+      useRoom({ client, profile, session: activeSession }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(result.current.roomId).toBeNull();
+    expect(result.current.connection).toBe("connected");
+    expect(result.current.error).toBe("room_access_lost");
+    expect(localStorage.getItem("gyeot:active-room-id")).toBeNull();
+    expect(localStorage.getItem("gyeot:active-invite-token")).toBeNull();
+  });
+
+  it("leaves the active room locally and returns to setup", async () => {
+    const client = new FakeRoomClient();
+    const { result } = renderHook(() =>
+      useRoom({ client, profile, session: activeSession }),
+    );
+
+    await act(async () => {
+      await result.current.createRoom();
+    });
+    act(() => result.current.leaveRoom());
+
+    expect(result.current.roomId).toBeNull();
+    expect(result.current.connection).toBe("connected");
+    expect(localStorage.getItem("gyeot:active-room-id")).toBeNull();
+    expect(localStorage.getItem("gyeot:active-invite-token")).toBeNull();
   });
 });

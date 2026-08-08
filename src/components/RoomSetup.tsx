@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DISPLAY_NAME_MAX_LENGTH } from "../room/constants";
 import { parseInviteToken } from "../room/invite";
 import type { RoomConnectionState } from "../room/types";
 
@@ -15,8 +16,12 @@ function roomMessage(connection: RoomConnectionState, error: string | null) {
   if (error?.includes("invalid_invite")) return "초대 코드를 확인해 주세요";
   if (error?.includes("expired_invite")) return "초대 링크가 만료되었어요";
   if (error?.includes("room_full")) return "방이 가득 찼어요";
+  if (error?.includes("room_access_lost")) {
+    return "이전 작업실에 다시 들어갈 수 없어 새 작업실을 선택해 주세요";
+  }
   if (connection === "reconnecting") return "연결을 다시 시도하고 있어요";
   if (connection === "unconfigured") return "연결 설정을 확인해 주세요";
+  if (error) return "작업실 연결을 확인해 주세요";
   return null;
 }
 
@@ -59,8 +64,10 @@ export function RoomSetup({
           <span>표시 이름</span>
           <input
             value={displayName}
-            onChange={(event) => onDisplayNameChange(event.target.value.slice(0, 24))}
-            maxLength={24}
+            onChange={(event) =>
+              onDisplayNameChange(event.target.value.slice(0, DISPLAY_NAME_MAX_LENGTH))
+            }
+            maxLength={DISPLAY_NAME_MAX_LENGTH}
             aria-label="표시 이름"
           />
         </label>

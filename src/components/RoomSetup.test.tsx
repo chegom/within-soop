@@ -49,4 +49,21 @@ describe("RoomSetup", () => {
 
     expect(screen.getByText("방이 가득 찼어요")).toBeTruthy();
   });
+
+  it("returns to setup with a clear message when a stored room is no longer accessible", () => {
+    render(
+      <RoomSetup
+        displayName="다정한 곰"
+        onDisplayNameChange={() => undefined}
+        onCreate={() => undefined}
+        onJoin={() => undefined}
+        connection="connected"
+        error="room_access_lost"
+      />,
+    );
+
+    expect(
+      screen.getByText("이전 작업실에 다시 들어갈 수 없어 새 작업실을 선택해 주세요"),
+    ).toBeTruthy();
+  });
 });

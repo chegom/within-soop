@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listenForInvite, readInitialInvite } from "./deepLink";
+import { HEARTBEAT_INTERVAL_MS } from "./constants";
 import { parseInviteToken } from "./invite";
-import { isVisibleEmote } from "./state";
 import type {
   RoomApi,
   RoomConnectionListener,
@@ -11,9 +11,10 @@ import type {
 import type {
   GuestProfile,
   RoomConnectionState,
-  RoomEmote,
   RoomMember,
 } from "./types";
+import { useRoomConnection } from "./useRoomConnection";
+import { useRoomEmotes } from "./useRoomEmotes";
 
 type UseRoomOptions = {
   client: RoomApi | null;
@@ -23,7 +24,11 @@ type UseRoomOptions = {
 
 const ACTIVE_ROOM_STORAGE_KEY = "gyeot:active-room-id";
 const ACTIVE_INVITE_STORAGE_KEY = "gyeot:active-invite-token";
-const RETRY_DELAYS = [2_000, 5_000, 10_000, 30_000] as const;
+
+function clearStoredRoom() {
+  localStorage.removeItem(ACTIVE_ROOM_STORAGE_KEY);
+  localStorage.removeItem(ACTIVE_INVITE_STORAGE_KEY);
+}
 
 function messageForError(error: unknown) {
   return error instanceof Error ? error.message : "room_connection_failed";
@@ -34,26 +39,15 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
   const [userId, setUserId] = useState<string | null>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [invite, setInvite] = useState<RoomInvite | null>(null);
-  const [connection, setConnection] = useState<RoomConnectionState>(
-    client ? "connecting" : "unconfigured",
-  );
-  const [emotes, setEmotes] = useState<Record<string, RoomEmote>>({});
   const [error, setError] = useState<string | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
-  const retryTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
-  const retryAttemptRef = useRef(0);
   const currentRoomRef = useRef<string | null>(null);
   const joinRoomRef = useRef<((inviteInput: string) => Promise<string>) | null>(null);
+  const { emotes, showEmote, clearEmotes } = useRoomEmotes();
 
   const clearSubscription = useCallback(() => {
     unsubscribeRef.current?.();
     unsubscribeRef.current = null;
-  }, []);
-
-  const clearRetry = useCallback(() => {
-    if (retryTimerRef.current !== null) window.clearTimeout(retryTimerRef.current);
-    retryTimerRef.current = null;
-    retryAttemptRef.current = 0;
   }, []);
 
   const refreshMembers = useCallback(
@@ -64,26 +58,29 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
     },
     [client],
   );
+  const { connection, updateConnection, clearRetry, scheduleRetry } =
+    useRoomConnection({
+      client,
+      currentRoomRef,
+      refreshMembers,
+      setError,
+      messageForError,
+    });
 
-  const scheduleRetry = useCallback(
-    (targetRoomId: string) => {
-      if (!client || retryTimerRef.current !== null) return;
-      const index = Math.min(retryAttemptRef.current, RETRY_DELAYS.length - 1);
-      const delay = RETRY_DELAYS[index];
-      retryAttemptRef.current += 1;
-      retryTimerRef.current = window.setTimeout(() => {
-        retryTimerRef.current = null;
-        void refreshMembers(targetRoomId)
-          .then(() => {
-            if (currentRoomRef.current === targetRoomId) setConnection("reconnecting");
-          })
-          .catch((retryError) => {
-            setError(messageForError(retryError));
-            scheduleRetry(targetRoomId);
-          });
-      }, delay);
+  const resetRoom = useCallback(
+    (nextConnection: RoomConnectionState, nextError: string | null = null) => {
+      clearSubscription();
+      clearRetry();
+      clearStoredRoom();
+      currentRoomRef.current = null;
+      setRoomId(null);
+      setInvite(null);
+      setMembers([]);
+      clearEmotes();
+      setError(nextError);
+      updateConnection(nextConnection);
     },
-    [client, refreshMembers],
+    [clearEmotes, clearRetry, clearSubscription, updateConnection],
   );
 
   const startRoom = useCallback(
@@ -92,13 +89,39 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
 
       clearSubscription();
       clearRetry();
+      clearStoredRoom();
       currentRoomRef.current = nextRoomId;
-      setRoomId(nextRoomId);
-      setInvite(nextInvite);
+      setRoomId(null);
+      setInvite(null);
       setMembers([]);
+      clearEmotes();
       setError(null);
-      setConnection("connecting");
-      await refreshMembers(nextRoomId);
+      updateConnection("connecting");
+
+      try {
+        const currentUserId = await client.ensureAnonymousSession();
+        const nextMembers = await client.loadMembers(nextRoomId);
+        if (!nextMembers.some((member) => member.userId === currentUserId)) {
+          throw new Error("room_access_lost");
+        }
+        if (currentRoomRef.current !== nextRoomId) {
+          throw new Error("room_transition_cancelled");
+        }
+
+        setUserId(currentUserId);
+        setRoomId(nextRoomId);
+        setInvite(nextInvite);
+        setMembers(nextMembers);
+        localStorage.setItem(ACTIVE_ROOM_STORAGE_KEY, nextRoomId);
+        if (nextInvite?.inviteToken) {
+          localStorage.setItem(ACTIVE_INVITE_STORAGE_KEY, nextInvite.inviteToken);
+        }
+      } catch (startError) {
+        if (currentRoomRef.current === nextRoomId) {
+          resetRoom(client ? "connected" : "unconfigured", messageForError(startError));
+        }
+        throw startError;
+      }
 
       const listener: RoomConnectionListener = {
         onChange: () => {
@@ -107,13 +130,10 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
           });
         },
         onEmote: (value, userId) => {
-          setEmotes((current) => ({
-            ...current,
-            [userId]: { userId, value, expiresAt: Date.now() + 4_000 },
-          }));
+          showEmote(userId, value);
         },
         onStatus: (nextState) => {
-          setConnection(nextState);
+          updateConnection(nextState);
           if (nextState === "connected") {
             clearRetry();
             void refreshMembers(nextRoomId).catch((refreshError) => {
@@ -126,43 +146,38 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
       };
       unsubscribeRef.current = client.subscribe(nextRoomId, listener);
     },
-    [client, clearRetry, clearSubscription, refreshMembers, scheduleRetry],
+    [
+      client,
+      clearRetry,
+      clearEmotes,
+      clearSubscription,
+      refreshMembers,
+      resetRoom,
+      scheduleRetry,
+      showEmote,
+      updateConnection,
+    ],
   );
 
   useEffect(() => {
     if (!client || !roomId) return undefined;
     const send = () => {
       void client.sendHeartbeat(roomId, session).catch((heartbeatError) => {
-        setConnection("reconnecting");
+        updateConnection("reconnecting");
         setError(messageForError(heartbeatError));
         scheduleRetry(roomId);
       });
     };
 
     send();
-    const heartbeatTimer = window.setInterval(send, 4_000);
+    const heartbeatTimer = window.setInterval(send, HEARTBEAT_INTERVAL_MS);
     return () => window.clearInterval(heartbeatTimer);
-  }, [client, roomId, scheduleRetry, session]);
-
-  useEffect(() => {
-    const emoteTimer = window.setInterval(() => {
-      const now = Date.now();
-      setEmotes((current) => {
-        const next = Object.fromEntries(
-          Object.entries(current).filter(([, emote]) => isVisibleEmote(emote, now)),
-        ) as Record<string, RoomEmote>;
-        return Object.keys(next).length === Object.keys(current).length ? current : next;
-      });
-    }, 250);
-    return () => window.clearInterval(emoteTimer);
-  }, []);
+  }, [client, roomId, scheduleRetry, session, updateConnection]);
 
   const createRoom = useCallback(async () => {
     if (!client) throw new Error("room_client_unavailable");
     setUserId(await client.ensureAnonymousSession());
     const nextInvite = await client.createRoom(profile);
-    localStorage.setItem(ACTIVE_ROOM_STORAGE_KEY, nextInvite.roomId);
-    localStorage.setItem(ACTIVE_INVITE_STORAGE_KEY, nextInvite.inviteToken);
     await startRoom(nextInvite.roomId, nextInvite);
     return nextInvite;
   }, [client, profile, startRoom]);
@@ -175,8 +190,6 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
       setUserId(await client.ensureAnonymousSession());
       const nextRoomId = await client.joinRoom(roomToken, profile);
       const nextInvite = { roomId: nextRoomId, inviteToken: roomToken };
-      localStorage.setItem(ACTIVE_ROOM_STORAGE_KEY, nextRoomId);
-      localStorage.setItem(ACTIVE_INVITE_STORAGE_KEY, roomToken);
       await startRoom(nextRoomId, nextInvite);
       return nextRoomId;
     },
@@ -191,7 +204,7 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
     let cancelled = false;
     let unlisten: () => void = () => undefined;
     if (!client) {
-      setConnection("unconfigured");
+      updateConnection("unconfigured");
       return undefined;
     }
 
@@ -200,7 +213,7 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
         await joinRoomRef.current?.(token);
       } catch (joinError) {
         if (!cancelled) {
-          setConnection("error");
+          updateConnection("error");
           setError(messageForError(joinError));
         }
       }
@@ -220,8 +233,13 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
           const storedInvite = storedInviteToken
             ? { roomId: storedRoomId ?? "", inviteToken: storedInviteToken }
             : null;
-          if (storedRoomId) await startRoom(storedRoomId, storedInvite);
-          else setConnection("connected");
+          if (storedRoomId) {
+            try {
+              await startRoom(storedRoomId, storedInvite);
+            } catch {
+              // startRoom clears stale local room state and keeps setup usable.
+            }
+          } else updateConnection("connected");
         }
 
         const stopListening = await listenForInvite((token) => {
@@ -232,7 +250,7 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
       })
       .catch((initializationError) => {
         if (!cancelled) {
-          setConnection("error");
+          updateConnection("error");
           setError(messageForError(initializationError));
         }
       });
@@ -243,7 +261,7 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
       clearSubscription();
       clearRetry();
     };
-  }, [client, clearRetry, clearSubscription, startRoom]);
+  }, [client, clearRetry, clearSubscription, startRoom, updateConnection]);
 
   const saveProfile = useCallback(
     async (nextProfile: GuestProfile) => {
@@ -260,14 +278,15 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
       if (!client || !targetRoomId) return;
       const senderId = userId ?? (await client.ensureAnonymousSession());
       if (!userId) setUserId(senderId);
-      setEmotes((current) => ({
-        ...current,
-        [senderId]: { userId: senderId, value, expiresAt: Date.now() + 4_000 },
-      }));
+      showEmote(senderId, value);
       await client.sendEmote(targetRoomId, value);
     },
-    [client, roomId, userId],
+    [client, roomId, showEmote, userId],
   );
+
+  const leaveRoom = useCallback(() => {
+    resetRoom(client ? "connected" : "unconfigured");
+  }, [client, resetRoom]);
 
   return {
     members,
@@ -279,7 +298,10 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
     error,
     createRoom,
     joinRoom,
+    leaveRoom,
     saveProfile,
     sendEmote,
   };
 }
+
+export type UseRoomResult = ReturnType<typeof useRoom>;

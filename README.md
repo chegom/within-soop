@@ -10,6 +10,7 @@
 - 최대 10명의 실제 구성원, 소개글·동물 캐릭터·작업/자리 비움/연결 끊김 상태 동기화
 - `gyeot://join/<초대 코드>` 딥링크와 7일짜리 초대 코드
 - 비공개 Realtime 이모티콘(4초 표시)과 끊긴 연결의 15초 유예 판정
+- Realtime 재연결 backoff, 접근할 수 없는 저장 방 자동 복구, 로컬 작업실 나가기
 - 첫 실행 때 동물과 어울리는 추천 이름(예: `다정한 곰`, `느긋한 여우`) 저장
 - 축소 위젯과 `920×700` 관리 화면 전환
 - 축소 시 현재 모니터 오른쪽 아래 배치, 항상 위 표시, 드래그 이동
@@ -42,6 +43,15 @@ npm run supabase:reset
 npm run supabase:test
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
+
+## 구조
+
+- `src/App.tsx`: 프로필·로컬 세션·활성 방을 연결하는 화면 컨트롤러
+- `src/components`: 전체 화면, 축소 위젯, 설정과 캐릭터 표현
+- `src/room`: 방 도메인 제약, Supabase 전송 계층, 생명주기·재연결 상태
+- `src/native`: React에서 사용하는 Tauri 세션 감지·창 상태 훅
+- `src-tauri`: 로컬 프로세스 감지와 데스크톱 창 제어
+- `supabase`: 방 스키마, 원자적 RPC, RLS와 pgTAP 검증
 
 ## 실시간 방 개발
 

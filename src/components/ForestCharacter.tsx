@@ -1,30 +1,4 @@
-export const FOREST_SPECIES = [
-  "bear",
-  "rabbit",
-  "mole",
-  "bird",
-  "fox",
-  "squirrel",
-] as const;
-
-export type ForestSpecies = (typeof FOREST_SPECIES)[number];
-
-export const speciesLabel: Record<ForestSpecies, string> = {
-  bear: "곰",
-  rabbit: "토끼",
-  mole: "두더지",
-  bird: "새",
-  fox: "여우",
-  squirrel: "다람쥐",
-};
-
-export function isForestSpecies(value: string | null): value is ForestSpecies {
-  return !!value && (FOREST_SPECIES as readonly string[]).includes(value);
-}
-
-export function pickRandomForestSpecies(): ForestSpecies {
-  return FOREST_SPECIES[Math.floor(Math.random() * FOREST_SPECIES.length)];
-}
+import type { ForestSpecies } from "../room/constants";
 
 const INK = "#3A3428";
 const EYE_HIGHLIGHT = "#FFFFFF";

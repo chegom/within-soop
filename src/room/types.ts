@@ -1,4 +1,4 @@
-import type { ForestSpecies } from "../components/ForestCharacter";
+import type { ForestSpecies } from "./constants";
 
 export type GuestProfile = {
   displayName: string;
