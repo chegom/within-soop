@@ -1,4 +1,5 @@
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
+import { isForestSpecies } from "./constants";
 import { parseInviteToken } from "./invite";
 import { normalizeDisplayName, normalizeIntro } from "./profile";
 import { supabase } from "./supabase";
@@ -20,7 +21,7 @@ export type RoomSessionSnapshot = {
 };
 
 export type RoomConnectionListener = {
-  onChange: () => void;
+  onChange: (member: RoomMember | null) => void;
   onEmote: (value: string, userId: string) => void;
   onStatus: (state: RoomConnectionState) => void;
 };
@@ -90,6 +91,55 @@ function toRoomMember(row: MemberRow): RoomMember {
     active: row.active,
     startedAt: row.started_at ? Date.parse(row.started_at) : null,
     lastSeenAt: Date.parse(row.last_seen_at),
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+export function parseRoomMemberChange(payload: unknown): RoomMember | null {
+  if (!isRecord(payload)) return null;
+
+  const row = isRecord(payload.record)
+    ? payload.record
+    : isRecord(payload.new)
+      ? payload.new
+      : null;
+  if (!row) return null;
+  const startedAt =
+    row.started_at === null || typeof row.started_at === "string"
+      ? row.started_at
+      : undefined;
+  const lastSeenAt =
+    typeof row.last_seen_at === "string" ? Date.parse(row.last_seen_at) : Number.NaN;
+  const parsedStartedAt =
+    typeof startedAt === "string" ? Date.parse(startedAt) : null;
+
+  if (
+    typeof row.room_id !== "string" ||
+    typeof row.user_id !== "string" ||
+    typeof row.display_name !== "string" ||
+    typeof row.species !== "string" ||
+    !isForestSpecies(row.species) ||
+    typeof row.intro !== "string" ||
+    typeof row.active !== "boolean" ||
+    startedAt === undefined ||
+    (parsedStartedAt !== null && !Number.isFinite(parsedStartedAt)) ||
+    !Number.isFinite(lastSeenAt)
+  ) {
+    return null;
+  }
+
+  return {
+    roomId: row.room_id,
+    userId: row.user_id,
+    displayName: row.display_name,
+    species: row.species,
+    intro: row.intro,
+    active: row.active,
+    startedAt: parsedStartedAt,
+    lastSeenAt,
   };
 }
 
@@ -225,10 +275,13 @@ class SupabaseRoomTransport implements RoomTransport {
   }
 
   subscribe(topic: string, listener: RoomConnectionListener) {
+    const onChange = ({ payload }: { payload: unknown }) => {
+      listener.onChange(parseRoomMemberChange(payload));
+    };
     const channel = this.client
       .channel(topic, { config: { private: true } })
-      .on("broadcast", { event: "INSERT" }, listener.onChange)
-      .on("broadcast", { event: "UPDATE" }, listener.onChange)
+      .on("broadcast", { event: "INSERT" }, onChange)
+      .on("broadcast", { event: "UPDATE" }, onChange)
       .on("broadcast", { event: "emote" }, ({ payload }) => {
         if (
           typeof payload === "object" &&

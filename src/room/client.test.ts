@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  parseRoomMemberChange,
   RoomClient,
   type RoomConnectionListener,
   type RoomTransport,
@@ -48,7 +49,46 @@ class FakeTransport implements RoomTransport {
   }
 }
 
+const broadcastMemberRow = {
+  room_id: "room-1",
+  user_id: "user-2",
+  display_name: "집중한 여우",
+  species: "fox",
+  intro: "안녕",
+  active: true,
+  started_at: "2026-08-11T00:00:00.000Z",
+  last_seen_at: "2026-08-11T00:00:04.000Z",
+};
+
 describe("RoomClient", () => {
+  it.each(["record", "new"] as const)(
+    "parses a full member row from the database broadcast %s field",
+    (rowField) => {
+      expect(
+        parseRoomMemberChange({
+          schema: "public",
+          table: "room_members",
+          eventType: "UPDATE",
+          [rowField]: broadcastMemberRow,
+        }),
+      ).toEqual({
+        roomId: "room-1",
+        userId: "user-2",
+        displayName: "집중한 여우",
+        species: "fox",
+        intro: "안녕",
+        active: true,
+        startedAt: Date.parse("2026-08-11T00:00:00.000Z"),
+        lastSeenAt: Date.parse("2026-08-11T00:00:04.000Z"),
+      });
+    },
+  );
+
+  it("rejects an incomplete database broadcast", () => {
+    expect(parseRoomMemberChange({ new: { user_id: "user-2" } })).toBeNull();
+    expect(parseRoomMemberChange(null)).toBeNull();
+  });
+
   it("creates an anonymous session only when none exists", async () => {
     const transport = new FakeTransport(null);
     const client = new RoomClient(transport);

@@ -90,6 +90,10 @@ class FakeRoomClient implements RoomApi {
     this.listener?.onEmote(value, userId);
   }
 
+  emitChange(member: RoomMember | null) {
+    this.listener?.onChange(member);
+  }
+
   emitStatus(state: Parameters<RoomConnectionListener["onStatus"]>[0]) {
     this.listener?.onStatus(state);
   }
@@ -149,6 +153,77 @@ describe("useRoom", () => {
     });
 
     expect(result.current.emotes["user-2"]).toBeUndefined();
+  });
+
+  it("merges realtime member changes without reloading the room", async () => {
+    const client = new FakeRoomClient();
+    const { result } = renderHook(() =>
+      useRoom({ client, profile, session: activeSession }),
+    );
+
+    await act(async () => {
+      await result.current.createRoom();
+    });
+    client.loadMembersCalls = 0;
+    const peer: RoomMember = {
+      ...selfMember,
+      userId: "user-2",
+      displayName: "집중한 여우",
+      species: "fox",
+      lastSeenAt: 110_000,
+    };
+
+    act(() => client.emitChange(peer));
+
+    expect(result.current.members).toEqual([selfMember, peer]);
+    const updatedPeer = { ...peer, active: false, lastSeenAt: 120_000 };
+    act(() => client.emitChange(updatedPeer));
+
+    expect(result.current.members).toEqual([selfMember, updatedPeer]);
+    expect(client.loadMembersCalls).toBe(0);
+  });
+
+  it("falls back to a room reload for an invalid realtime payload", async () => {
+    const client = new FakeRoomClient();
+    const { result } = renderHook(() =>
+      useRoom({ client, profile, session: activeSession }),
+    );
+
+    await act(async () => {
+      await result.current.createRoom();
+    });
+    client.loadMembersCalls = 0;
+
+    await act(async () => {
+      client.emitChange(null);
+      await Promise.resolve();
+    });
+
+    expect(client.loadMembersCalls).toBe(1);
+  });
+
+  it("updates the local profile without reloading the room", async () => {
+    const client = new FakeRoomClient();
+    const { result } = renderHook(() =>
+      useRoom({ client, profile, session: activeSession }),
+    );
+
+    await act(async () => {
+      await result.current.createRoom();
+    });
+    client.loadMembersCalls = 0;
+    const nextProfile = {
+      displayName: "집중한 여우",
+      species: "fox" as const,
+      intro: "실시간 최적화 중",
+    };
+
+    await act(async () => {
+      await result.current.saveProfile(nextProfile);
+    });
+
+    expect(result.current.members[0]).toMatchObject(nextProfile);
+    expect(client.loadMembersCalls).toBe(0);
   });
 
   it("shows a sent emote locally before the broadcast comes back", async () => {

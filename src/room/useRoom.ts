@@ -124,9 +124,23 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
       }
 
       const listener: RoomConnectionListener = {
-        onChange: () => {
-          void refreshMembers(nextRoomId).catch((refreshError) => {
-            setError(messageForError(refreshError));
+        onChange: (member) => {
+          if (!member || member.roomId !== nextRoomId) {
+            void refreshMembers(nextRoomId).catch((refreshError) => {
+              setError(messageForError(refreshError));
+            });
+            return;
+          }
+
+          setMembers((currentMembers) => {
+            if (currentRoomRef.current !== nextRoomId) return currentMembers;
+            const existingIndex = currentMembers.findIndex(
+              (currentMember) => currentMember.userId === member.userId,
+            );
+            if (existingIndex === -1) return [...currentMembers, member];
+            const nextMembers = [...currentMembers];
+            nextMembers[existingIndex] = member;
+            return nextMembers;
           });
         },
         onEmote: (value, userId) => {
@@ -267,9 +281,13 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
     async (nextProfile: GuestProfile) => {
       if (!client || !roomId) return;
       await client.saveProfile(roomId, nextProfile);
-      await refreshMembers(roomId);
+      setMembers((currentMembers) =>
+        currentMembers.map((member) =>
+          member.userId === userId ? { ...member, ...nextProfile } : member,
+        ),
+      );
     },
-    [client, refreshMembers, roomId],
+    [client, roomId, userId],
   );
 
   const sendEmote = useCallback(
