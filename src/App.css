@@ -1001,12 +1001,16 @@ html[data-view-mode="compact"] #root {
 }
 
 .compact-live {
+  max-width: 174px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  overflow: hidden;
   color: #8b8fa4;
   font-size: 8px;
   font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .compact-live i {
@@ -1277,7 +1281,8 @@ html[data-view-mode="compact"] #root {
 }
 
 .compact-room-count,
-.compact-global-presence {
+.compact-global-presence,
+.compact-connection-status {
   min-height: 18px;
   padding: 0;
   display: inline-flex;
@@ -1317,7 +1322,12 @@ html[data-view-mode="compact"] #root {
 }
 
 .compact-global-presence {
+  color: #488269;
+}
+
+.compact-connection-status {
   color: #8b8fa4;
+  font-size: 8px;
 }
 
 .compact-opacity-slider {

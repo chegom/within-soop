@@ -30,6 +30,7 @@ export type RoomTransport = {
   getSession(): Promise<string | null>;
   signInAnonymously(): Promise<string>;
   rpc<T>(name: "create_room" | "join_room", args: Record<string, string>): Promise<T>;
+  globalOnlineCount(): Promise<number>;
   members(roomId: string): Promise<RoomMember[]>;
   updateMember(roomId: string, userId: string, patch: Record<string, unknown>): Promise<void>;
   subscribe(topic: string, listener: RoomConnectionListener): () => void;
@@ -45,6 +46,7 @@ export type RoomApi = Pick<
   | "ensureAnonymousSession"
   | "createRoom"
   | "joinRoom"
+  | "loadGlobalOnlineCount"
   | "loadMembers"
   | "saveProfile"
   | "sendHeartbeat"
@@ -203,6 +205,11 @@ export class RoomClient {
     return this.transport.members(roomId);
   }
 
+  async loadGlobalOnlineCount() {
+    await this.ensureAnonymousSession();
+    return this.transport.globalOnlineCount();
+  }
+
   async saveProfile(roomId: string, profile: GuestProfile) {
     const userId = await this.ensureAnonymousSession();
     await this.transport.updateMember(roomId, userId, {
@@ -253,6 +260,16 @@ class SupabaseRoomTransport implements RoomTransport {
     const { data, error } = await this.client.rpc(name, args);
     if (error) throw error;
     return data as T;
+  }
+
+  async globalOnlineCount() {
+    const { data, error } = await this.client.rpc("get_global_online_count");
+    if (error) throw error;
+    const count = Number(data);
+    if (!Number.isSafeInteger(count) || count < 0) {
+      throw new Error("invalid_global_online_count");
+    }
+    return count;
   }
 
   async members(roomId: string) {

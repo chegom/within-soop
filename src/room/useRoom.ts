@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listenForInvite, readInitialInvite } from "./deepLink";
-import { HEARTBEAT_INTERVAL_MS } from "./constants";
+import {
+  GLOBAL_ONLINE_REFRESH_MS,
+  HEARTBEAT_INTERVAL_MS,
+} from "./constants";
 import { parseInviteToken } from "./invite";
 import type {
   RoomApi,
@@ -39,6 +42,7 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
   const [userId, setUserId] = useState<string | null>(null);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [invite, setInvite] = useState<RoomInvite | null>(null);
+  const [globalOnlineCount, setGlobalOnlineCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const currentRoomRef = useRef<string | null>(null);
@@ -76,6 +80,7 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
       setRoomId(null);
       setInvite(null);
       setMembers([]);
+      setGlobalOnlineCount(null);
       clearEmotes();
       setError(nextError);
       updateConnection(nextConnection);
@@ -187,6 +192,25 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
     const heartbeatTimer = window.setInterval(send, HEARTBEAT_INTERVAL_MS);
     return () => window.clearInterval(heartbeatTimer);
   }, [client, roomId, scheduleRetry, session, updateConnection]);
+
+  useEffect(() => {
+    if (!client || !roomId) return undefined;
+    let cancelled = false;
+    const refresh = () => {
+      void client.loadGlobalOnlineCount().then((count) => {
+        if (!cancelled) setGlobalOnlineCount(count);
+      }).catch(() => {
+        // Keep the last successful aggregate; room sync remains independent.
+      });
+    };
+
+    refresh();
+    const refreshTimer = window.setInterval(refresh, GLOBAL_ONLINE_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(refreshTimer);
+    };
+  }, [client, roomId]);
 
   const createRoom = useCallback(async () => {
     if (!client) throw new Error("room_client_unavailable");
@@ -311,6 +335,7 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
     userId,
     roomId,
     invite,
+    globalOnlineCount,
     connection,
     emotes,
     error,

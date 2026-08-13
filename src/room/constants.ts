@@ -23,6 +23,7 @@ export const INTRO_MAX_LENGTH = 28;
 export const ROOM_CAPACITY = 10;
 export const ROOM_EMOTES = ["👋", "☕", "🔥", "✨"] as const;
 export const HEARTBEAT_INTERVAL_MS = 4_000;
+export const GLOBAL_ONLINE_REFRESH_MS = 15_000;
 export const EMOTE_VISIBLE_MS = 4_000;
 export const OFFLINE_AFTER_MS = 15_000;
 

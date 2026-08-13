@@ -45,6 +45,8 @@ class FakeRoomClient implements RoomApi {
   heartbeats: RoomSessionSnapshot[] = [];
   joinedTokens: string[] = [];
   loadMembersCalls = 0;
+  globalOnlineCountCalls = 0;
+  onlineCount = 1;
   members: RoomMember[] = [selfMember];
   private listener: RoomConnectionListener | null = null;
 
@@ -68,6 +70,11 @@ class FakeRoomClient implements RoomApi {
   async loadMembers() {
     this.loadMembersCalls += 1;
     return this.members;
+  }
+
+  async loadGlobalOnlineCount() {
+    this.globalOnlineCountCalls += 1;
+    return this.onlineCount;
   }
 
   async saveProfile() {}
@@ -134,6 +141,30 @@ describe("useRoom", () => {
     });
 
     expect(client.heartbeats).toEqual([activeSession, activeSession]);
+  });
+
+  it("refreshes the real global online count every fifteen seconds", async () => {
+    const client = new FakeRoomClient();
+    client.onlineCount = 7;
+    const { result } = renderHook(() =>
+      useRoom({ client, profile, session: activeSession }),
+    );
+
+    await act(async () => {
+      await result.current.createRoom();
+      await Promise.resolve();
+    });
+
+    expect(result.current.globalOnlineCount).toBe(7);
+    expect(client.globalOnlineCountCalls).toBe(1);
+
+    client.onlineCount = 8;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+
+    expect(result.current.globalOnlineCount).toBe(8);
+    expect(client.globalOnlineCountCalls).toBe(2);
   });
 
   it("removes an incoming emote after four seconds", async () => {

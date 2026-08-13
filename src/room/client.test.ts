@@ -13,6 +13,7 @@ class FakeTransport implements RoomTransport {
     event: "emote";
     payload: { value: string; userId: string };
   }> = [];
+  onlineCount = 0;
 
   constructor(private sessionUserId: string | null) {}
 
@@ -28,6 +29,10 @@ class FakeTransport implements RoomTransport {
 
   async rpc<T>() {
     return {} as T;
+  }
+
+  async globalOnlineCount() {
+    return this.onlineCount;
   }
 
   async members() {
@@ -125,5 +130,12 @@ describe("RoomClient", () => {
         payload: { value: "🔥", userId: "user-1" },
       },
     ]);
+  });
+
+  it("loads the authenticated aggregate online count", async () => {
+    const transport = new FakeTransport("user-1");
+    transport.onlineCount = 12;
+
+    await expect(new RoomClient(transport).loadGlobalOnlineCount()).resolves.toBe(12);
   });
 });

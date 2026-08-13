@@ -181,6 +181,7 @@ function App() {
     return (
       <CompactRoomView
         session={session}
+        activeTool={activeTool}
         sessionDuration={sessionDuration}
         selfMember={selfMember}
         peers={peers}
@@ -188,6 +189,7 @@ function App() {
         profileIntro={profile.intro}
         now={now}
         roomMemberCount={roomMemberCount}
+        globalOnlineCount={room.globalOnlineCount}
         connection={room.connection}
         compactOpacity={compactOpacity}
         usesNativeCompactOpacity={usesNativeCompactOpacity}

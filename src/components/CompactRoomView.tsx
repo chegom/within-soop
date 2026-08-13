@@ -13,6 +13,7 @@ import { connectionLabel, remoteStatus } from "./roomLabels";
 
 type CompactRoomViewProps = {
   session: AiSessionSnapshot;
+  activeTool: string;
   sessionDuration: string;
   selfMember: RoomMember;
   peers: RoomMember[];
@@ -20,6 +21,7 @@ type CompactRoomViewProps = {
   profileIntro: string;
   now: number;
   roomMemberCount: number;
+  globalOnlineCount: number | null;
   connection: RoomConnectionState;
   compactOpacity: number;
   usesNativeCompactOpacity: boolean;
@@ -34,6 +36,7 @@ type CompactRoomViewProps = {
 
 export function CompactRoomView({
   session,
+  activeTool,
   sessionDuration,
   selfMember,
   peers,
@@ -41,6 +44,7 @@ export function CompactRoomView({
   profileIntro,
   now,
   roomMemberCount,
+  globalOnlineCount,
   connection,
   compactOpacity,
   usesNativeCompactOpacity,
@@ -55,6 +59,9 @@ export function CompactRoomView({
   const [showEmotes, setShowEmotes] = useState(false);
   const [showIntro, setShowIntro] = useState(false);
   const [draftIntro, setDraftIntro] = useState(profileIntro);
+  const localSessionLabel = session.active
+    ? `${activeTool} 감지됨`
+    : "세션 대기 중";
 
   const openIntro = () => {
     setDraftIntro(profileIntro);
@@ -82,9 +89,10 @@ export function CompactRoomView({
           <span className="compact-logo" data-tauri-drag-region>곁</span>
           <span
             className={`compact-live ${session.active ? "is-active" : ""}`}
+            aria-label={localSessionLabel}
             data-tauri-drag-region
           >
-            <i /> {session.active ? "함께 작업 중" : "자리 비움"}
+            <i /> {localSessionLabel}
           </span>
         </div>
         <div className="compact-controls">
@@ -158,7 +166,10 @@ export function CompactRoomView({
           <span className="compact-room-count">
             <Icon name="users" /> 파티원 {roomMemberCount}명
           </span>
-          <span className="compact-global-presence">{connectionLabel(connection)}</span>
+          <span className="compact-global-presence">
+            지금 함께 {globalOnlineCount ?? "—"}명
+          </span>
+          <span className="compact-connection-status">{connectionLabel(connection)}</span>
         </div>
         <input
           className="compact-opacity-slider"
