@@ -86,8 +86,8 @@ npm run supabase:test
 ## 데스크톱 설치본 배포
 
 `.github/workflows/release.yml`은 GitHub Actions에서 macOS Apple Silicon, macOS Intel,
-Windows x64 설치본을 만들고 초안 GitHub Release에 첨부합니다. 저장소 Actions secret에
-다음 공개 클라이언트 환경 변수가 있어야 합니다.
+Windows x64 NSIS 설치본을 만들고 초안 GitHub Release에 첨부합니다. 저장소 Actions
+secret에 다음 공개 클라이언트 환경 변수가 있어야 합니다.
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`

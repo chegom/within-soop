@@ -2,6 +2,14 @@ name: Desktop Release
 
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: 설치본을 만들 플랫폼
+        type: choice
+        options:
+          - all
+          - windows
+        default: all
   push:
     tags:
       - "v*"
@@ -46,10 +54,16 @@ jobs:
         with:
           targets: ${{ matrix.rust-target }}
 
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
       - name: Install frontend dependencies
+        if: inputs.platform != 'windows' || matrix.platform == 'windows-latest'
         run: npm ci
 
       - name: Build and upload desktop installers
+        if: inputs.platform != 'windows' || matrix.platform == 'windows-latest'
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -64,7 +78,7 @@ jobs:
 
             - macOS Apple Silicon: aarch64 DMG
             - macOS Intel: x64 DMG
-            - Windows x64: NSIS 또는 MSI 설치 파일
+            - Windows x64: NSIS 설치 파일
 
             이 릴리스는 코드 서명 인증서가 없는 테스트 배포입니다. 운영 배포 전에는 macOS 공증과 Windows 코드 서명을 추가해야 합니다.
           releaseDraft: true
