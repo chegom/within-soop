@@ -393,7 +393,7 @@ pub fn run() {
             start_window_drag
         ])
         .run(tauri::generate_context!())
-        .expect("error while running gyeot");
+        .expect("error while running WITHIN SOOP");
 }
 
 #[cfg(test)]
@@ -464,7 +464,8 @@ mod tests {
     fn detects_recent_session_file_writes_by_mtime_only() {
         use std::time::{Duration, SystemTime};
 
-        let root = std::env::temp_dir().join(format!("gyeot-scan-test-{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("within-soop-scan-test-{}", std::process::id()));
         let nested = root.join("2026").join("08");
         std::fs::create_dir_all(&nested).unwrap();
         std::fs::write(nested.join("rollout.jsonl"), b"{}\n").unwrap();

@@ -72,9 +72,9 @@ jobs:
           APPLE_SIGNING_IDENTITY: ${{ startsWith(matrix.platform, 'macos') && '-' || '' }}
         with:
           tagName: v__VERSION__
-          releaseName: 곁 v__VERSION__
+          releaseName: WITHIN SOOP v__VERSION__
           releaseBody: |
-            서로 다른 장소에서 함께 작업하기 위한 곁 데스크톱 설치본입니다.
+            각자의 자리에서 조용히 함께 작업하기 위한 WITHIN SOOP 데스크톱 설치본입니다.
 
             - macOS Apple Silicon: aarch64 DMG
             - macOS Intel: x64 DMG

@@ -18,6 +18,7 @@ import type {
 } from "./types";
 import { useRoomConnection } from "./useRoomConnection";
 import { useRoomEmotes } from "./useRoomEmotes";
+import { readStoredValue, removeStoredValue, writeStoredValue } from "../storage";
 
 type UseRoomOptions = {
   client: RoomApi | null;
@@ -25,12 +26,12 @@ type UseRoomOptions = {
   session: RoomSessionSnapshot;
 };
 
-const ACTIVE_ROOM_STORAGE_KEY = "gyeot:active-room-id";
-const ACTIVE_INVITE_STORAGE_KEY = "gyeot:active-invite-token";
+const ACTIVE_ROOM_STORAGE_KEY = "active-room-id";
+const ACTIVE_INVITE_STORAGE_KEY = "active-invite-token";
 
 function clearStoredRoom() {
-  localStorage.removeItem(ACTIVE_ROOM_STORAGE_KEY);
-  localStorage.removeItem(ACTIVE_INVITE_STORAGE_KEY);
+  removeStoredValue(ACTIVE_ROOM_STORAGE_KEY);
+  removeStoredValue(ACTIVE_INVITE_STORAGE_KEY);
 }
 
 function messageForError(error: unknown) {
@@ -117,9 +118,9 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
         setRoomId(nextRoomId);
         setInvite(nextInvite);
         setMembers(nextMembers);
-        localStorage.setItem(ACTIVE_ROOM_STORAGE_KEY, nextRoomId);
+        writeStoredValue(ACTIVE_ROOM_STORAGE_KEY, nextRoomId);
         if (nextInvite?.inviteToken) {
-          localStorage.setItem(ACTIVE_INVITE_STORAGE_KEY, nextInvite.inviteToken);
+          writeStoredValue(ACTIVE_INVITE_STORAGE_KEY, nextInvite.inviteToken);
         }
       } catch (startError) {
         if (currentRoomRef.current === nextRoomId) {
@@ -266,8 +267,8 @@ export function useRoom({ client, profile, session }: UseRoomOptions) {
         if (initialInvite) {
           await joinInvite(initialInvite);
         } else {
-          const storedRoomId = localStorage.getItem(ACTIVE_ROOM_STORAGE_KEY);
-          const storedInviteToken = localStorage.getItem(ACTIVE_INVITE_STORAGE_KEY);
+          const storedRoomId = readStoredValue(ACTIVE_ROOM_STORAGE_KEY);
+          const storedInviteToken = readStoredValue(ACTIVE_INVITE_STORAGE_KEY);
           const storedInvite = storedInviteToken
             ? { roomId: storedRoomId ?? "", inviteToken: storedInviteToken }
             : null;

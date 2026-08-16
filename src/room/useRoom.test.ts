@@ -337,6 +337,8 @@ describe("useRoom", () => {
     expect(result.current.roomId).toBeNull();
     expect(result.current.connection).toBe("connected");
     expect(result.current.error).toBe("room_access_lost");
+    expect(localStorage.getItem("within-soop:active-room-id")).toBeNull();
+    expect(localStorage.getItem("within-soop:active-invite-token")).toBeNull();
     expect(localStorage.getItem("gyeot:active-room-id")).toBeNull();
     expect(localStorage.getItem("gyeot:active-invite-token")).toBeNull();
   });
@@ -354,6 +356,8 @@ describe("useRoom", () => {
 
     expect(result.current.roomId).toBeNull();
     expect(result.current.connection).toBe("connected");
+    expect(localStorage.getItem("within-soop:active-room-id")).toBeNull();
+    expect(localStorage.getItem("within-soop:active-invite-token")).toBeNull();
     expect(localStorage.getItem("gyeot:active-room-id")).toBeNull();
     expect(localStorage.getItem("gyeot:active-invite-token")).toBeNull();
   });

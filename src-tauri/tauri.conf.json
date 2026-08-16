@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "곁",
-  "version": "0.1.0",
+  "productName": "WITHIN SOOP",
+  "version": "0.1.1",
   "identifier": "com.gyeot.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "곁",
+        "title": "WITHIN SOOP",
         "width": 920,
         "height": 700,
         "minWidth": 760,
@@ -29,7 +29,7 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["gyeot"]
+        "schemes": ["withinsoop", "gyeot"]
       }
     }
   },

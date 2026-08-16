@@ -56,7 +56,7 @@ export function RoomSetup({
   return (
     <section className="room-setup" aria-labelledby="room-setup-title">
       <div className="room-setup-card">
-        <span className="eyebrow">나만의 작은 작업실</span>
+        <span className="eyebrow">WITH · IN · SOOP</span>
         <h1 id="room-setup-title">먼저 방을 열거나, 초대에 참여해요</h1>
         <p>가입 없이 표시 이름과 동물 캐릭터만 공유해요.</p>
 

@@ -86,7 +86,9 @@ export function CompactRoomView({
           <span className="grip-dots" data-tauri-drag-region aria-hidden="true">
             <i /><i /><i /><i /><i /><i />
           </span>
-          <span className="compact-logo" data-tauri-drag-region>곁</span>
+          <span className="compact-logo" data-tauri-drag-region aria-label="WITHIN SOOP">
+            W<i>IN</i>
+          </span>
           <span
             className={`compact-live ${session.active ? "is-active" : ""}`}
             aria-label={localSessionLabel}
@@ -99,7 +101,7 @@ export function CompactRoomView({
           <button type="button" onClick={onExpand} aria-label="큰 화면으로 보기">
             <Icon name="expand" />
           </button>
-          <button type="button" onClick={onClose} aria-label="곁 닫기">
+          <button type="button" onClick={onClose} aria-label="WITHIN SOOP 닫기">
             <Icon name="close" />
           </button>
         </div>

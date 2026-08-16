@@ -101,9 +101,25 @@ button:disabled {
   color: white;
   background: var(--ink);
   font-family: ui-rounded, "Arial Rounded MT Bold", sans-serif;
-  font-size: 18px;
-  font-weight: 800;
+  grid-template-columns: auto auto;
+  gap: 1px;
+  font-size: 15px;
+  font-weight: 900;
   box-shadow: 0 8px 20px rgba(53, 56, 79, 0.2);
+}
+
+.brand-mark b,
+.brand-mark i {
+  font: inherit;
+  letter-spacing: -0.08em;
+}
+
+.brand-mark i {
+  align-self: end;
+  margin-bottom: 9px;
+  color: #a8d98a;
+  font-size: 6px;
+  letter-spacing: 0;
 }
 
 .brand > div {
@@ -112,13 +128,30 @@ button:disabled {
   gap: 9px;
 }
 
-.brand strong {
+.brand-name {
+  display: inline-flex;
+  align-items: baseline;
   font-family: ui-rounded, "Arial Rounded MT Bold", "Apple SD Gothic Neo", sans-serif;
   font-size: 20px;
-  letter-spacing: -0.04em;
+  font-style: normal;
+  letter-spacing: -0.055em;
 }
 
-.brand span:last-child {
+.brand-name span:nth-child(2) {
+  color: var(--lilac);
+}
+
+.brand-name em {
+  margin-left: 5px;
+  color: var(--muted);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.brand-tagline {
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
@@ -995,9 +1028,20 @@ html[data-view-mode="compact"] #root {
   background: var(--ink);
   border-radius: 6px 6px 6px 2px;
   font-family: ui-rounded, "Arial Rounded MT Bold", "Apple SD Gothic Neo", sans-serif;
-  font-size: 11px;
+  grid-template-columns: auto auto;
+  gap: 0;
+  font-size: 9px;
   font-weight: 850;
   letter-spacing: -0.04em;
+}
+
+.compact-logo i {
+  align-self: end;
+  margin-bottom: 4px;
+  color: #a8d98a;
+  font-size: 4px;
+  font-style: normal;
+  letter-spacing: 0;
 }
 
 .compact-live {

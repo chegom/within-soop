@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { readStoredValue, writeStoredValue } from "../storage";
 
 export type ViewMode = "full" | "compact";
 
@@ -7,18 +8,18 @@ export function useWindowMode(
   setNotice: Dispatch<SetStateAction<string | null>>,
 ) {
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
-    localStorage.getItem("gyeot:view-mode") === "compact" ? "compact" : "full",
+    readStoredValue("view-mode") === "compact" ? "compact" : "full",
   );
   const [usesNativeCompactOpacity, setUsesNativeCompactOpacity] = useState(false);
   const [compactOpacity, setCompactOpacity] = useState(() => {
-    const saved = Number(localStorage.getItem("gyeot:compact-opacity") ?? "70");
+    const saved = Number(readStoredValue("compact-opacity") ?? "70");
     return Number.isFinite(saved) ? Math.min(100, Math.max(5, saved)) : 70;
   });
 
   useEffect(() => {
     const isTauri = "__TAURI_INTERNALS__" in window;
     document.documentElement.dataset.viewMode = viewMode;
-    localStorage.setItem("gyeot:view-mode", viewMode);
+    writeStoredValue("view-mode", viewMode);
     if (isTauri) {
       void invoke("set_window_mode", { compact: viewMode === "compact" }).catch(() => {
         setNotice("창 크기를 바꾸지 못했어요");
@@ -27,7 +28,7 @@ export function useWindowMode(
   }, [setNotice, viewMode]);
 
   useEffect(() => {
-    localStorage.setItem("gyeot:compact-opacity", String(compactOpacity));
+    writeStoredValue("compact-opacity", String(compactOpacity));
   }, [compactOpacity]);
 
   useEffect(() => {

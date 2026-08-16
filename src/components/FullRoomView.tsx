@@ -74,10 +74,14 @@ export function FullRoomView({
     <div className="app-shell">
       <header className="window-header" data-tauri-drag-region>
         <div className="brand" data-tauri-drag-region>
-          <span className="brand-mark">곁</span>
+          <span className="brand-mark" aria-hidden="true">
+            <b>W</b><i>IN</i>
+          </span>
           <div data-tauri-drag-region>
-            <strong>곁</strong>
-            <span>혼자여도, 같은 방에서.</span>
+            <strong className="brand-name" aria-label="WITHIN SOOP">
+              <span>WITH</span><span>IN</span><em>SOOP</em>
+            </strong>
+            <span className="brand-tagline">각자의 자리에서, 같은 숲 안에.</span>
           </div>
         </div>
         <div className="window-header-actions">
@@ -110,7 +114,7 @@ export function FullRoomView({
           <>
             <section className="room-heading" aria-labelledby="room-title">
               <div>
-                <span className="eyebrow">조용한 작업실</span>
+                <span className="eyebrow">WITH · IN · SOOP</span>
                 <h1 id="room-title">누군가와 나란히 만드는 시간</h1>
               </div>
               <div className="room-meta">

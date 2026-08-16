@@ -14,7 +14,7 @@ describe("desktop invitation links", () => {
   it("reads only the first valid invite when the app starts", async () => {
     const api = createDeepLinkApi([
       "https://example.com/not-an-invite",
-      `gyeot://join/${inviteToken}`,
+      `withinsoop://join/${inviteToken}`,
     ]);
 
     await expect(readInitialInvite(api)).resolves.toBe(inviteToken);
@@ -32,7 +32,7 @@ describe("desktop invitation links", () => {
     const onInvite = vi.fn();
 
     const unlisten = await listenForInvite(onInvite, api);
-    receiveUrls(["gyeot://wrong/path", `gyeot://join/${inviteToken}`]);
+    receiveUrls(["withinsoop://wrong/path", `withinsoop://join/${inviteToken}`]);
 
     expect(onInvite).toHaveBeenCalledWith(inviteToken);
     unlisten();
