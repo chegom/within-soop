@@ -4,13 +4,16 @@
 
 혼자 Codex나 Claude Code와 작업할 때도 다른 사람들과 조용히 같은 공간에 있는 감각을 주는 Mac·Windows 데스크톱 앱입니다. `WITHIN`은 `WITH · IN`—함께, SOOP 안에서—라는 제품의 방식을 담습니다.
 
+[웹에서 설치하기](https://chegom.github.io/within-soop/) · [최신 릴리스](https://github.com/chegom/within-soop/releases/latest)
+
 ## 지금 할 수 있는 일
 
 - Codex·Claude Code 프로세스를 로컬에서 4초마다 감지
 - 실제 프로세스 시작 시간을 기준으로 현재 연속 세션 시간 표시
 - 이메일·비밀번호 없이 익명으로 비공개 작업실 생성·참여
 - 최대 10명의 실제 구성원, 소개글·동물 캐릭터·작업/자리 비움/연결 끊김 상태 동기화
-- `withinsoop://join/<초대 코드>` 딥링크와 7일짜리 초대 코드
+- 설치 안내로 이어지는 HTTPS 초대 링크와 7일짜리 초대 코드
+- `withinsoop://join/<초대 코드>` 앱 딥링크 및 기존 `gyeot://` 링크 호환
 - 비공개 Realtime 이모티콘(4초 표시)과 끊긴 연결의 15초 유예 판정
 - Realtime 재연결 backoff, 접근할 수 없는 저장 방 자동 복구, 로컬 작업실 나가기
 - 첫 실행 때 동물과 어울리는 추천 이름(예: `다정한 곰`, `느긋한 여우`) 저장
@@ -78,8 +81,10 @@ WITHIN SOOP은 웹사이트가 아니라 Tauri 데스크톱 앱입니다. 두 �
 실행하고, 이미 호스팅된 Supabase 프로젝트를 통해 실시간 상태를 동기화합니다.
 
 1. A가 방을 만들고 `초대 링크 복사`를 누릅니다.
-2. B가 WITHIN SOOP을 설치한 상태에서 `withinsoop://join/...` 링크를 엽니다.
-3. 메신저가 커스텀 링크를 막으면 링크 끝의 48자리 코드를 복사해 WITHIN SOOP의 `초대 코드`
+2. B가 `https://chegom.github.io/within-soop/?join=...` 링크를 엽니다.
+3. 설치되어 있으면 `WITHIN SOOP에서 초대 열기`를 누르고, 없다면 같은 페이지에서
+   운영체제에 맞는 설치본을 받습니다.
+4. 앱이 링크를 열지 못하면 48자리 코드를 복사해 WITHIN SOOP의 `초대 코드`
    입력란에 붙여 넣습니다.
 
 0.1.0 설치본에서 만든 `gyeot://join/...` 링크도 계속 열 수 있습니다.
@@ -99,6 +104,13 @@ secret에 다음 공개 클라이언트 환경 변수가 있어야 합니다.
 `Desktop Release` 워크플로를 수동 실행하거나 `v0.1.0` 같은 버전 태그를 푸시하면
 설치본 빌드가 시작됩니다. 현재 워크플로는 테스트 배포를 위한 ad-hoc macOS 서명을
 사용합니다. 외부 공개 배포 전에는 macOS 공증과 Windows 코드 서명을 추가해야 합니다.
+
+## 설치·초대 웹페이지
+
+`site`는 GitHub Pages에 배포되는 정적 랜딩 페이지입니다. 최신 공개 릴리스의 자산을
+GitHub API에서 읽어 Apple Silicon·Intel Mac과 Windows 설치 버튼을 연결합니다.
+`?join=<48자리 코드>`가 있으면 설치된 앱의 `withinsoop://` 딥링크를 여는 초대 화면을
+먼저 보여줍니다. `.github/workflows/pages.yml`이 `main`의 `site/**` 변경을 자동 배포합니다.
 
 ## 호스팅 백엔드 출시 체크리스트
 

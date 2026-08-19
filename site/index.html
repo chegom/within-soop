@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#24362b" />
+    <meta
+      name="description"
+      content="각자의 자리에서, 같은 숲 안에. AI와 일하는 사람들의 조용한 데스크톱 작업실 WITHIN SOOP."
+    />
+    <meta property="og:title" content="WITHIN SOOP" />
+    <meta
+      property="og:description"
+      content="말하지 않아도 함께 일하는 감각. 초대를 열거나 Mac·Windows 앱을 내려받으세요."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://chegom.github.io/within-soop/" />
+    <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>WITHIN SOOP — 각자의 자리에서, 같은 숲 안에</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+    <div class="forest-sky" aria-hidden="true">
+      <span class="sun"></span>
+      <span class="ridge ridge-far"></span>
+      <span class="ridge ridge-near"></span>
+    </div>
+
+    <header class="site-header">
+      <a class="wordmark" href="./" aria-label="WITHIN SOOP 홈">
+        <img src="assets/app-icon.svg" alt="" width="42" height="42" />
+        <span><b>WITH</b><b>IN</b><em>SOOP</em></span>
+      </a>
+      <nav aria-label="주요 메뉴">
+        <a href="#download">다운로드</a>
+        <a href="#how">사용 방법</a>
+        <a href="https://github.com/chegom/within-soop">GitHub</a>
+      </nav>
+    </header>
+
+    <aside class="invite-panel" id="invite-panel" aria-labelledby="invite-title" hidden>
+      <div>
+        <span class="invite-signal" aria-hidden="true"></span>
+        <div>
+          <p>작업실 초대가 도착했어요</p>
+          <h2 id="invite-title">같은 숲으로 들어갈까요?</h2>
+          <small>앱이 열리지 않으면 먼저 아래에서 설치한 뒤 다시 눌러주세요.</small>
+        </div>
+      </div>
+      <div class="invite-actions">
+        <button class="text-button" id="copy-code" type="button">초대 코드 복사</button>
+        <a class="button button-dark" id="open-in-app" href="#">WITHIN SOOP에서 열기</a>
+      </div>
+      <code id="invite-code" class="sr-only"></code>
+    </aside>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">WITH · IN · SOOP</p>
+          <h1 id="hero-title">
+            각자의 자리에서,<br />
+            <span>같은 숲 안에.</span>
+          </h1>
+          <p class="hero-description">
+            Codex나 Claude Code로 일하는 동안 서로의 프롬프트는 보지 않고,
+            그저 함께 집중하고 있다는 사실만 나눕니다.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-dark" href="#download">내 컴퓨터에 설치하기</a>
+            <a class="button button-quiet" href="https://github.com/chegom/within-soop">소스 보기</a>
+          </div>
+          <p class="hero-footnote">
+            가입 없음 · 프롬프트 수집 없음 · 최대 10명
+          </p>
+        </div>
+
+        <div class="presence-scene" aria-label="세 사람이 같은 작업실에서 조용히 일하는 화면 예시">
+          <div class="scene-window">
+            <div class="scene-toolbar">
+              <span class="mini-wordmark"><b>WITH</b><b>IN</b> SOOP</span>
+              <span class="scene-status"><i></i> Codex 감지됨</span>
+            </div>
+            <div class="scene-heading">
+              <span>조용한 작업실</span>
+              <strong>누군가와 나란히 만드는 시간</strong>
+            </div>
+            <div class="branch" aria-hidden="true"></div>
+            <div class="forest-friends">
+              <div class="friend friend-self">
+                <span class="friend-label">MY SEAT</span>
+                <span class="animal">🦊</span>
+                <strong>나</strong>
+                <small>Codex · 42분째</small>
+              </div>
+              <div class="friend">
+                <span class="friend-label">ONLINE</span>
+                <span class="animal">🐻</span>
+                <strong>다정한 곰</strong>
+                <small>함께 작업 중</small>
+              </div>
+              <div class="friend">
+                <span class="friend-label">ONLINE</span>
+                <span class="animal">🐰</span>
+                <strong>고요한 토끼</strong>
+                <small>함께 작업 중</small>
+              </div>
+              <div class="friend friend-empty">
+                <span class="empty-seat">+</span>
+                <small>빈 자리</small>
+              </div>
+            </div>
+            <div class="scene-footer">
+              <span>👋</span><span>☕</span><span>🔥</span><span>✨</span>
+            </div>
+          </div>
+          <p class="scene-caption"><i></i> 대화 대신 존재만 가볍게</p>
+        </div>
+      </section>
+
+      <section class="downloads" id="download" aria-labelledby="download-title">
+        <div class="section-heading">
+          <p class="eyebrow">DESKTOP APP</p>
+          <h2 id="download-title">지금, 같은 숲에 들어가기</h2>
+          <p>
+            최신 테스트 버전 <strong class="release-version">v0.1.1</strong> · 설치할 컴퓨터에 맞는 파일을 선택하세요.
+          </p>
+        </div>
+
+        <div class="download-list">
+          <a
+            class="download-row"
+            data-platform="mac-arm"
+            data-asset="WITHIN.SOOP_0.1.1_aarch64.dmg"
+            href="https://github.com/chegom/within-soop/releases/download/v0.1.1/WITHIN.SOOP_0.1.1_aarch64.dmg"
+          >
+            <span class="platform-icon">⌘</span>
+            <span><strong>Mac · Apple Silicon</strong><small>M1, M2, M3, M4 이후</small></span>
+            <span class="download-meta"><small class="asset-size">DMG</small><b>받기 ↓</b></span>
+          </a>
+          <a
+            class="download-row"
+            data-platform="mac-intel"
+            data-asset="WITHIN.SOOP_0.1.1_x64.dmg"
+            href="https://github.com/chegom/within-soop/releases/download/v0.1.1/WITHIN.SOOP_0.1.1_x64.dmg"
+          >
+            <span class="platform-icon">⌘</span>
+            <span><strong>Mac · Intel</strong><small>2020년 이전 Intel Mac</small></span>
+            <span class="download-meta"><small class="asset-size">DMG</small><b>받기 ↓</b></span>
+          </a>
+          <a
+            class="download-row"
+            data-platform="windows"
+            data-asset="WITHIN.SOOP_0.1.1_x64-setup.exe"
+            href="https://github.com/chegom/within-soop/releases/download/v0.1.1/WITHIN.SOOP_0.1.1_x64-setup.exe"
+          >
+            <span class="platform-icon">⊞</span>
+            <span><strong>Windows · x64</strong><small>Windows 10·11</small></span>
+            <span class="download-meta"><small class="asset-size">EXE</small><b>받기 ↓</b></span>
+          </a>
+        </div>
+
+        <div class="unsigned-note">
+          <strong>현재 설치본은 테스트 배포입니다.</strong>
+          <span>코드 서명이 없어 운영체제가 경고할 수 있습니다. 출처가 이 페이지인지 확인한 뒤 실행하세요.</span>
+          <a id="release-link" href="https://github.com/chegom/within-soop/releases/tag/v0.1.1">릴리스와 체크섬 확인 ↗</a>
+        </div>
+      </section>
+
+      <section class="how" id="how" aria-labelledby="how-title">
+        <div class="section-heading section-heading-light">
+          <p class="eyebrow">HOW IT WORKS</p>
+          <h2 id="how-title">말하지 않아도 함께 일하는 방법</h2>
+        </div>
+        <ol class="steps">
+          <li><span>01</span><strong>작업실을 열어요</strong><p>가입 없이 이름과 동물만 정하면 됩니다.</p></li>
+          <li><span>02</span><strong>웹 초대 링크를 보내요</strong><p>앱이 없는 사람도 설치 페이지부터 시작할 수 있습니다.</p></li>
+          <li><span>03</span><strong>각자 하던 일을 해요</strong><p>작업 여부와 연결 상태만 조용히 나눕니다.</p></li>
+        </ol>
+      </section>
+
+      <section class="privacy" aria-labelledby="privacy-title">
+        <div>
+          <p class="eyebrow">PRIVATE BY DESIGN</p>
+          <h2 id="privacy-title">보이지 않아야 할 것은<br />숲 밖으로 보내지 않습니다.</h2>
+        </div>
+        <dl>
+          <div><dt>프롬프트</dt><dd>전송하지 않음</dd></div>
+          <div><dt>터미널·파일 경로</dt><dd>전송하지 않음</dd></div>
+          <div><dt>다른 사람에게 보이는 것</dt><dd>이름·동물·작업 여부·소개</dd></div>
+          <div><dt>계정</dt><dd>이메일 없이 익명 접속</dd></div>
+        </dl>
+      </section>
+    </main>
+
+    <footer>
+      <a class="wordmark wordmark-footer" href="./">
+        <span><b>WITH</b><b>IN</b><em>SOOP</em></span>
+      </a>
+      <p>각자의 자리에서, 같은 숲 안에.</p>
+      <div><a href="https://github.com/chegom/within-soop">GitHub</a><a href="#download">다운로드</a></div>
+    </footer>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>

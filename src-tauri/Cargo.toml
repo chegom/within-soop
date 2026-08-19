@@ -1,6 +1,6 @@
 [package]
 name = "within-soop"
-version = "0.1.1"
+version = "0.1.2"
 description = "A quiet shared room for people working with AI"
 authors = ["SOOP"]
 edition = "2021"
